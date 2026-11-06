@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Ship of Theseus, a Film</title>
+  <link rel="stylesheet" href="/shared/studio.css">
+  <link rel="stylesheet" href="/film/film.css">
+</head>
+<body>
+  <main class="page">
+    <div class="runhead"><a href="../../">Motion Studio</a> / Film</div>
+    <h1>The Ship of Theseus</h1>
+    <p class="dek">Thirty-six seconds, every frame drawn by JavaScript: paper, ink, halftone, risograph and watercolor, all from code.</p>
+    <figure class="wide" id="film"></figure>
+
+    <section class="notes">
+      <h2>How it is made</h2>
+      <ul>
+        <li><strong>Every frame is a function of time.</strong> Each scene is <code>draw(ctx, { t })</code>; nothing is stored between frames, so the player can scrub and the exporter renders exactly what you see.</li>
+        <li><strong>Print, faked honestly.</strong> Flat inks are drawn on their own layer, a speckle mask eats grain out of them, and they are multiplied onto the paper, sometimes a few pixels off register, the way a risograph prints.</li>
+        <li><strong>Tone without gradients.</strong> Shadows are pencil hatching, rot is stippling, the sea and the sun's glow are halftone dots. Tone comes from how many marks there are, not from smooth color.</li>
+        <li><strong>Seeded randomness.</strong> Wobble, grain and plank order come from fixed seeds, so the hand-drawn look holds still instead of boiling.</li>
+        <li><strong>Export in the browser.</strong> Export MP4 renders every frame, encodes H.264 with WebCodecs and packages it with mediabunny. No server, no ffmpeg.</li>
+      </ul>
+      <h2>Learned from</h2>
+      <p>Kevin T. Ngo's films <a href="https://kevintngo.com/work/dew/">dew</a> and <a href="https://kevintngo.com/work/answer/">answer</a>, drawn frame by frame in JavaScript. Tyler Hobbs on <a href="https://www.tylerxhobbs.com/words/a-guide-to-simulating-watercolor-paint-with-generative-art">simulating watercolor</a>. The facts are the ones checked for the <a href="../../lessons/ship-of-theseus/">scroll lesson</a>.</p>
+    </section>
+  </main>
+  <script type="module">
+    import film from './film.js';
+    import { mountPlayer } from '../../film/engine.js';
+    mountPlayer(film);
+  </script>
+</body>
+</html>

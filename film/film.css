@@ -1,0 +1,6 @@
+/* Film player: the canvas is the figure; controls are the studio's usual quiet pills. */
+.film-canvas { display: block; width: 100%; max-width: 760px; aspect-ratio: 1; margin: 0 auto; height: auto; border-bottom: 1px solid var(--rule); }
+#film .controls { max-width: 760px; margin: 12px auto 0; }
+#film .scrub { flex: 1 1 200px; }
+#film .scrub input { width: 100%; }
+#film .status { color: var(--muted); }

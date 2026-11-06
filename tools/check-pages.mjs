@@ -9,7 +9,7 @@ import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
 const only = process.argv[2];
-const pages = ['', ...['lessons', 'drills'].flatMap((s) =>
+const pages = ['', ...['films', 'lessons', 'drills'].flatMap((s) =>
   readdirSync(resolve(root, s)).filter((d) => existsSync(resolve(root, s, d, 'index.html'))).map((d) => `${s}/${d}/`))]
   .filter((p) => !only || p.startsWith(only.replace(/\/?$/, '/')) || (only === 'index' && p === ''));
 

@@ -1,8 +1,9 @@
 # Motion Studio
 
-A portfolio of web animation techniques (drills), and animated history and philosophy lessons built from them. Goal behind it: Henry can take any project or idea and turn it into an animated explanation that makes one idea click.
+A studio for code-drawn short films (the main goal, after Kevin T. Ngo: research/kevin-ngo.md), plus a portfolio of web animation techniques (drills) and interactive lessons. Goal behind it: Henry can take any project, history lesson or philosophical idea and turn it into drawn, animated art that makes one idea click.
 
 ## Layout
+- `films/slug/` code-drawn short films: `film.js` (scenes), `index.html` (player), `meta.json`. Kit in `film/kit.js`, engine and MP4 export in `film/engine.js`. Use the `make-film` skill.
 - `drills/NN-slug/` one technique per page: `index.html`, `main.js`, `meta.json`. Copy `drills/01-easing-and-springs` as the template.
 - `lessons/slug/` finished explainers that combine drills. Same three files, plus `sources.md` (every factual claim with a primary-source citation).
 - `shared/studio.css` tokens and base styles; `shared/page.js` helpers (`fitCanvas`, `loop`, `token`, `reducedMotion`). Do not fork these per page; add a token or helper here if two pages need it.
@@ -12,6 +13,7 @@ A portfolio of web animation techniques (drills), and animated history and philo
 
 ## Commands
 - `npm run dev` dev server. `npm run build` production build into `dist/`.
+- `node tools/render-film.mjs films/<slug> --sheet | --stills t,t | --mp4` contact sheet, full-size stills, or the MP4 (H.264 via WebCodecs + mediabunny, no ffmpeg).
 - `npm run check` opens every page in headless Chromium at 1440px and 390px, clicks the first control, scrolls, and fails on console errors, page errors, horizontal overflow or collapsed `.stage`. Screenshots land in `tools/screens/`. `npm run check -- drills/05-foo` checks one page. Look at the screenshots; a clean check with a blank figure is still a failure.
 
 ## Page rules (editorial, same tokens as henryvu.blog)
@@ -29,7 +31,7 @@ A portfolio of web animation techniques (drills), and animated history and philo
 - UI responses 150 to 300 ms ease-out; narrative motion can be slower. Springs for anything interruptible.
 
 ## Libraries (installed)
-gsap 3.15 (all plugins free: ScrollTrigger, DrawSVG, SplitText, MorphSVG, Flip), motion 14.9 (vanilla `animate`, `scroll`, `inView`, `stagger`), d3 7.9, three 0.187, simplex-noise 4. Node 20.11, Vite 6. Ask before adding a dependency; prefer the platform (Web Animations API, CSS scroll-driven animations, View Transitions).
+mediabunny 1.65 (MP4 muxing), gsap 3.15 (all plugins free: ScrollTrigger, DrawSVG, SplitText, MorphSVG, Flip), motion 14.9 (vanilla `animate`, `scroll`, `inView`, `stagger`), d3 7.9, three 0.187, simplex-noise 4. Node 20.11, Vite 6. Ask before adding a dependency; prefer the platform (Web Animations API, CSS scroll-driven animations, View Transitions).
 
 ## Facts in lessons
 History and philosophy claims need a primary or scholarly source in `sources.md`, checked, with the passage located. Mark anything reconstructed or uncertain on the page itself. A persuasive animation of a wrong claim is the main failure mode of this genre.

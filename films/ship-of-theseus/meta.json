@@ -1,0 +1,7 @@
+{
+  "title": "The Ship of Theseus (film)",
+  "summary": "A 36-second code-drawn short: risograph sun, halftone sea, watercolor planks that rot and are replaced, then rebuilt into a second ship. Every frame drawn in JavaScript.",
+  "skill": "film",
+  "library": ["Canvas 2D", "simplex-noise", "WebCodecs", "mediabunny"],
+  "learnedFrom": ["Kevin T. Ngo, dew and answer (kevintngo.com)", "Tyler Hobbs, watercolor technique"]
+}

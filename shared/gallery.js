@@ -1,6 +1,7 @@
 // Builds the index from each page's meta.json, so a new drill or lesson needs no edit here.
 const drills = import.meta.glob('/drills/*/meta.json', { eager: true, import: 'default' });
 const lessons = import.meta.glob('/lessons/*/meta.json', { eager: true, import: 'default' });
+const films = import.meta.glob('/films/*/meta.json', { eager: true, import: 'default' });
 
 function render(listId, entries) {
   const list = document.getElementById(listId);
@@ -15,5 +16,6 @@ function render(listId, entries) {
   });
 }
 
+render('films', films);
 render('lessons', lessons);
 render('drills', drills);
