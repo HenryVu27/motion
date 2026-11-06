@@ -117,7 +117,7 @@ for (let i = 0; i < N; i++) oldPlanks.push(el('path', { class: 'plank old' }, tr
 
 // Labels: sans, set in the figure, values in ink.
 const label = (x, y, cls, anchor = 'start') => el('text', { x, y, class: cls, 'text-anchor': anchor });
-const topLeft = label(24, 140, 'label-num');
+const topLeft = label(976, 140, 'label-num', 'end');   // upper right stays clear of the mast until the rebuild
 const oarNote = label(A.cx - 150, A.wl + 78, 'label');
 const pileNote = label(790, 330, 'label', 'middle');
 // Phones get bigger type (lesson.css), so the label block's line spacing scales with it.
