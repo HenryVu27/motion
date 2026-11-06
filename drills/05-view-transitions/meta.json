@@ -1,0 +1,7 @@
+{
+  "title": "View transitions",
+  "summary": "A grid that opens one plate into a detail view with the View Transitions API (document.startViewTransition), moving a shared view-transition-name and falling back to an instant swap.",
+  "skill": "state change",
+  "library": ["View Transitions API"],
+  "learnedFrom": ["Chrome for Developers, View Transitions docs", "Jhey Tompkins, jhey.dev"]
+}

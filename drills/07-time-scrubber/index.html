@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Time Scrubber</title>
+  <link rel="stylesheet" href="/shared/studio.css">
+  <style>
+    #stage { aspect-ratio: auto; height: 600px; touch-action: pan-y; }
+    #stage svg { font-family: var(--sans); cursor: ew-resize; user-select: none; -webkit-user-select: none; }
+    .axis text { font-size: 11px; fill: var(--muted); font-variant-numeric: tabular-nums lining-nums; }
+    .axis line, .axis path { stroke: var(--rule); }
+    .name { font-size: 12px; fill: var(--muted); paint-order: stroke; stroke: var(--bg); stroke-width: 4px; stroke-linejoin: round; }
+    #year-note { white-space: nowrap; }
+    .name.on { fill: var(--ink); font-weight: 600; }
+    .yearline { stroke: var(--mark-accent); stroke-width: 1.5; }
+    .yearlabel { paint-order: stroke; stroke: var(--bg); stroke-width: 4px; font-size: 13px; font-weight: 600; fill: var(--mark-accent); font-variant-numeric: tabular-nums lining-nums; }
+    .controls input[type="range"].scrub { width: 100%; flex: 1 1 100%; margin: 0; }
+    .alive { font-family: var(--sans); font-size: 14px; line-height: 1.7; color: var(--text-2); min-height: 3.4em; margin: 14px 0 0; }
+    .alive strong { color: var(--ink); font-weight: 600; margin-right: 6px; }
+    .alive .who { display: inline-block; margin-right: 14px; color: var(--ink); }
+    .alive .who small { color: var(--muted); font-size: 12px; margin-left: 4px; }
+    .legend { font-family: var(--sans); font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 8px; }
+    .legend svg { vertical-align: middle; margin-right: 6px; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="runhead"><a href="../../">Motion Studio</a> / Drill 07</div>
+    <h1>Scrubbing through time</h1>
+    <p class="dek">Make the year the control. Drag a line through twenty-five centuries and watch who was alive at the same moment.</p>
+
+    <figure class="wide">
+      <div class="fig-title">Twenty-seven philosophers, Thales to Wittgenstein <span id="year-note">350 BCE</span></div>
+      <div class="stage" id="stage"></div>
+      <div class="controls">
+        <button id="play" type="button" aria-pressed="false">Play</button>
+        <button type="button" data-year="-520">520 BCE</button>
+        <button type="button" data-year="-350">350 BCE</button>
+        <button type="button" data-year="1650">1650 CE</button>
+        <input class="scrub" id="scrub" type="range" step="1" aria-label="Year">
+      </div>
+      <p class="alive" id="alive" aria-live="polite"></p>
+      <div class="legend">
+        <span><svg width="34" height="10" aria-hidden="true"><rect width="34" height="10" style="fill: var(--mark-strong)"/></svg>dates recorded</span>
+        <span><svg width="34" height="10" aria-hidden="true"><defs><linearGradient id="lg"><stop offset="0" style="stop-color: var(--mark-strong); stop-opacity: .15"/><stop offset=".5" style="stop-color: var(--mark-strong)"/></linearGradient></defs><rect width="34" height="10" fill="url(#lg)"/></svg>faded end: circa</span>
+        <span><svg width="34" height="10" aria-hidden="true"><rect x=".5" y=".5" width="33" height="9" style="fill: none; stroke: var(--mark-strong)" stroke-dasharray="3 2"/></svg>dashed: traditional dating</span>
+      </div>
+      <figcaption>Drag anywhere on the chart, or press Play. Accent bars are the people alive in the year under the line. Try 350 BCE: Plato and Aristotle in Athens, Mencius and Zhuangzi in China, all alive in the same year. The empty stretch after Augustine is a gap in this short list, not in philosophy.</figcaption>
+    </figure>
+
+    <section class="notes">
+      <h2>What this teaches</h2>
+      <ul>
+        <li><strong>There is no year 0.</strong> Store historical years (negative for BCE), convert to astronomical numbering (1 BCE = 0) before any scale or subtraction, and convert back only for labels. Otherwise every span that crosses the era boundary is a year too long.</li>
+        <li><strong>Direct manipulation follows the finger, programmatic jumps animate.</strong> While dragging, the line sits exactly under the pointer with no transition. A button press tweens the year itself with d3, so the highlights sweep through every year on the way.</li>
+        <li><strong>Draw uncertainty, do not footnote it.</strong> A circa end fades out; a traditional date is dashed. The reader sees which bars are documented lives and which are estimates before reading a word.</li>
+        <li><strong>Transition the state, not the frame.</strong> Each change sets a new target colour and d3 interrupts the running transition on that element, so a fast scrub never queues up a backlog of fades.</li>
+        <li><strong>Keyboard and screen readers get the same control.</strong> The range input under the chart is the real slider; dragging the chart just writes to it, and the list of who is alive is a live region.</li>
+      </ul>
+
+      <h2>The lines that matter</h2>
+<pre><code>const toAstro = (y) => (y &lt; 0 ? y + 1 : y);          // 1 BCE becomes 0; no year 0
+const label = (a) => (a &lt;= 0 ? `${1 - a} BCE` : `${a} CE`);
+const x = d3.scaleLinear([toAstro(-640), toAstro(1960)], [0, width]);
+
+// A jump tweens the year, so everything downstream updates on every frame
+svg.transition('jump').duration(700).ease(d3.easeCubicInOut)
+  .tween('year', () => { const i = d3.interpolateRound(year, to); return (t) => setYear(i(t)); });</code></pre>
+
+      <h2>Data</h2>
+      <p>Birth and death years were checked on 5 November 2026 against English Wikipedia, with the Stanford and Internet Encyclopedias of Philosophy for the earliest Chinese figures; the source of each row is in <code>data.js</code>. A year marked c. in the source is drawn with a faded end. Laozi's dates are a tradition, not a life: the dashed bar spans the sixth century BCE where the tradition places him. Heraclitus is left out because the sources give only a floruit of about 500 BCE.</p>
+
+      <h2>Learned from</h2>
+      <p><a href="https://histography.io">Histography</a> by Matan Stauber, where every dot is a historical event from Wikipedia and a resizable bar along the bottom chooses the era; Mike Bostock's <a href="https://d3js.org">d3</a>, for scales, axes and interruptible transitions.</p>
+    </section>
+  </main>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

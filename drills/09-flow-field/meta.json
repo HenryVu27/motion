@@ -1,0 +1,7 @@
+{
+  "title": "Flow field",
+  "summary": "Thousands of canvas particles steering by angles read from simplex noise, with accumulated or faded trails and an optional curl field. Canvas 2D and simplex-noise.",
+  "skill": "generative motion",
+  "library": ["Canvas 2D", "simplex-noise"],
+  "learnedFrom": ["Tyler Hobbs, Flow fields", "Daniel Shiffman, The Nature of Code"]
+}

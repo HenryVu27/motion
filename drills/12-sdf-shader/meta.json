@@ -1,0 +1,7 @@
+{
+  "title": "Signed distance shader",
+  "summary": "2D signed distance functions in a raw WebGL2 fragment shader: a box morphing into a circle, a pointer-driven smooth union and fwidth-antialiased iso-lines.",
+  "skill": "fragment shaders",
+  "library": ["WebGL2", "GLSL ES 3.00"],
+  "learnedFrom": ["Inigo Quilez, 2D distance functions", "Patricio Gonzalez Vivo and Jen Lowe, The Book of Shaders"]
+}

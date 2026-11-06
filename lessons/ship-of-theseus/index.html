@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Ship of Theseus</title>
+  <link rel="stylesheet" href="/shared/studio.css">
+  <link rel="stylesheet" href="./lesson.css">
+</head>
+<body>
+  <article>
+    <header class="page intro">
+      <div class="runhead"><a href="../../">Motion Studio</a> / Lesson</div>
+      <h1>The Ship of Theseus</h1>
+      <p class="dek">Replace every plank of a ship, one at a time. Then build the old planks into a second ship. Which one did Theseus sail?</p>
+      <p class="meta">Scroll to play. About four minutes.</p>
+    </header>
+
+    <section class="scrolly" id="scrolly">
+      <figure class="graphic" aria-label="Animated drawing of the ship, its planks and the shore">
+        <svg id="ship-svg" viewBox="0 100 1000 460" role="img" aria-labelledby="graphic-desc">
+          <desc id="graphic-desc">A Greek galley on the water beside a shore. As the story goes on its planks are replaced, the old planks pile up on the shore and are rebuilt into a second ship.</desc>
+        </svg>
+      </figure>
+
+      <div class="steps">
+        <div class="step" data-beat="1"><div class="step-body">
+          <p><span class="when">Athens, 399 BCE.</span> Socrates has been sentenced to death, and he will have to wait a month for it. The day before his trial, the city’s yearly mission to Apollo set out for the island of Delos, and until the ship has gone there and back, no one may be publicly put to death.</p>
+          <p class="cite">Xenophon, <i>Memorabilia</i> 4.8.2; Plato, <i>Phaedo</i> 58a&ndash;c</p></div>
+        </div>
+        <div class="step" data-beat="2"><div class="step-body">
+          <p>This is no ordinary ship. The Athenians say it is the very ship in which Theseus sailed to Crete with fourteen young Athenians and came home alive. A thirty-oared galley, said to have been kept since Theseus’s day.</p>
+          <p class="cite">Plato, <i>Phaedo</i> 58a; Plutarch, <i>Theseus</i> 23.1</p></div>
+        </div>
+        <div class="step step-long" data-beat="3"><div class="step-body">
+          <p>But wood rots. Plutarch, writing about five centuries after Socrates, says the Athenians kept the ship down to the time of Demetrius of Phalerum by taking away the old timbers from time to time and putting new, sound ones in their place.</p>
+          <p>Keep scrolling and you do the repairs. Every plank you replace is new timber.</p>
+          <p class="cite">Plutarch, <i>Theseus</i> 23.1</p></div>
+        </div>
+        <div class="step" data-beat="4"><div class="step-body">
+          <p>Now not one plank is original. It has the same shape, the same name and the same unbroken history of being sailed and mended. Is it the same ship?</p>
+          <p>Plutarch says the philosophers split over whether it was still the same ship. Some said it remained the same, others that it did not. If it changed, which plank did it?</p></div>
+        </div>
+        <div class="step" data-beat="5"><div class="step-body">
+          <p>Nearly two thousand years after the repairs Plutarch describes, in 1655, Thomas Hobbes added a twist. Suppose someone had kept every old plank as it came out.</p>
+          <p class="cite">Hobbes, <i>De Corpore</i> II.11.7</p></div>
+        </div>
+        <div class="step step-long" data-beat="6"><div class="step-body">
+          <p>And suppose that keeper put them back together <em>in the same order</em>, and made a ship of them again.</p>
+          <p>Now there are two ships. One has every original plank. The other has the history.</p></div>
+        </div>
+        <div class="step" data-beat="7"><div class="step-body">
+          <p>Before Hobbes answers, you choose. Which one is the Ship of Theseus?</p>
+          <div class="choices" role="group" aria-label="Your answer">
+            <button type="button" data-choice="repaired">The repaired ship</button>
+            <button type="button" data-choice="rebuilt">The rebuilt ship</button>
+            <button type="button" data-choice="both">Both</button>
+            <button type="button" data-choice="neither">Neither</button>
+          </div>
+          <p class="verdict" id="verdict" aria-live="polite"></p></div>
+        </div>
+        <div class="step" data-beat="8"><div class="step-body">
+          <p>Hobbes starts from the word. “We must consider by what name any thing is called, when we enquire concerning the Identity of it.” For him “a Ship, which signifies Matter so figured, will be the same, as long as the Matter remains the same,” and a ship with some new planks is “partly the same, and partly not the same.” By that definition the rebuilt ship is the original.</p>
+          <p>But he grants that other names work differently. A man, a river, a city are named for a continuing source of their motion, not for their stuff, and stay the same while their matter flows through them. Name the ship that way and the repaired ship wins. The puzzle was never in the wood. It was in the word.</p>
+          <p class="cite">Hobbes, <i>Elements of Philosophy</i> (1656), pp. 100&ndash;101</p></div>
+        </div>
+        <div class="step" data-beat="9"><div class="step-body">
+          <p>Swap the ship for anything that keeps its name while its parts change: a city, a band, a company, a body. Each time, the useful question is not “is it the same?” but “the same <em>what</em>?”</p></div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="page outro">
+      <hr>
+      <h2>About this page</h2>
+      <p>The drawing is an illustration, not a reconstruction. It has 24 planks and 15 visible oars, one side of a thirty-oared galley; nobody knows how the real ship was built. Years of repair are compressed into one scroll.</p>
+      <p>Every quoted claim is listed with its passage in <code>sources.md</code> next to this page. Built in Motion Studio from drill 04 (scrollytelling) and drill 06 (moving many marks along computed paths). One function draws any moment of the story from the scroll position, so it runs backwards as easily as forwards.</p>
+    </footer>
+  </article>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

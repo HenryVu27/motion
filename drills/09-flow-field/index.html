@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Flow Field</title>
+  <link rel="stylesheet" href="/shared/studio.css">
+  <style>
+    .stage canvas + canvas { position: absolute; inset: 0; }
+    .fig-title span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="runhead"><a href="../../">Motion Studio</a> / Drill 09</div>
+    <h1>Flow field</h1>
+    <p class="dek">Thousands of particles, one rule: read an angle from noise, take a step. The trails they leave become the picture.</p>
+
+    <figure class="wide">
+      <div class="fig-title">Particles following a simplex noise field <span id="seed-note">seed</span></div>
+      <div class="stage" id="stage">
+        <canvas id="paint" aria-label="Particle trails following a noise field"></canvas>
+        <canvas id="overlay" aria-hidden="true"></canvas>
+      </div>
+      <div class="controls">
+        <button id="reseed" type="button">Reseed</button>
+        <button id="mode" type="button" aria-pressed="false">Fade trails</button>
+        <button id="curl" type="button" aria-pressed="false">Curl noise</button>
+        <button id="show-field" type="button" aria-pressed="false">Show field</button>
+        <label>Noise scale <input id="scale" type="range" min="0.0008" max="0.008" step="0.0002" value="0.0024"><output id="scale-out">0.0024</output></label>
+        <label>Particles <input id="count" type="range" min="500" max="10000" step="500" value="4000"><output id="count-out">4000</output></label>
+      </div>
+      <figcaption>Every line is drawn by the same rule; the red one is a single particle, traced. Turn on Show field to see the angles it is reading. Small noise scale gives long sweeping currents, large scale gives tight eddies.</figcaption>
+    </figure>
+
+    <section class="notes">
+      <h2>What this teaches</h2>
+      <ul>
+        <li><strong>Noise, not random.</strong> <code>Math.random()</code> gives each point an unrelated angle, so particles jitter in place. Simplex noise is smooth: nearby points get nearby angles, so paths curve and neighbors flow together. The noise scale is the only real design knob; it sets how big a current is in pixels.</li>
+        <li><strong>Map the noise past one turn.</strong> Simplex output sits mostly near zero (standard deviation about 0.43 here), so <code>angle = n * PI</code> leans right. Multiplying by a full turn, <code>n * TAU</code>, wraps the tails around and spreads directions evenly.</li>
+        <li><strong>Accumulate or fade.</strong> Never clearing the canvas and drawing at low alpha turns density into tone: where paths converge the paper darkens. Fading instead paints a translucent background rectangle each frame. Make that alpha frame-rate independent (<code>1 - (1 - a) ** (dt * 60)</code>), and expect faint ghosts: 8-bit blending rounds tiny alpha steps to zero, so old trails never quite vanish.</li>
+        <li><strong>Batch the strokes.</strong> One <code>beginPath</code>, a <code>moveTo</code>/<code>lineTo</code> pair per particle, one <code>stroke</code>. Thousands of separate strokes would cost thousands of draw calls.</li>
+        <li><strong>Curl noise keeps particles apart.</strong> An angle field has sinks where paths pile into a few dark veins. Rotating the noise gradient by 90 degrees gives a divergence-free field: particles slide along the noise contours and never bunch up.</li>
+      </ul>
+
+      <h2>The lines that matter</h2>
+<pre><code>const noise3D = createNoise3D(seededRandom);   // simplex-noise 4: pass a PRNG to reproduce a seed
+
+// angle field: smooth input, so neighbors agree
+const a = noise3D(x * scale, y * scale, z) * TAU;
+p.x += Math.cos(a) * speed;  p.y += Math.sin(a) * speed;
+
+// curl field: rotate the gradient 90 degrees, divergence-free
+const dx = (noise3D(X + e, Y, z) - noise3D(X - e, Y, z)) / (2 * e);
+const dy = (noise3D(X, Y + e, z) - noise3D(X, Y - e, z)) / (2 * e);
+p.x += dy * speed;  p.y -= dx * speed;</code></pre>
+
+      <h2>Learned from</h2>
+      <p>Tyler Hobbs, <a href="https://www.tylerxhobbs.com/words/flow-fields">Flow fields</a>, for the grid of angles, step length, starting positions and drawing the curves themselves as the image; Daniel Shiffman, <a href="https://natureofcode.com">The Nature of Code</a>, for steering particles through a field of vectors. Noise by Jonas Wagner's <a href="https://github.com/jwagner/simplex-noise.js">simplex-noise</a>.</p>
+    </section>
+  </main>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

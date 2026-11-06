@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Motion Studio</title>
+  <link rel="stylesheet" href="/shared/studio.css">
+  <style>
+    .list { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--ink); }
+    .list li { border-bottom: 1px solid var(--rule); }
+    .list a { display: grid; grid-template-columns: 3ch 1fr; gap: 4px 14px; padding: 14px 0; text-decoration: none; }
+    .list .n { font-family: var(--sans); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums lining-nums; padding-top: 6px; }
+    .list .t { color: var(--ink); font-size: 1.15rem; }
+    .list .d { grid-column: 2; font-family: var(--sans); font-size: 14px; color: var(--muted); }
+    .list a:hover .t { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="runhead">Motion Studio</div>
+    <h1>Motion Studio</h1>
+    <p class="dek">A working portfolio of web animation techniques, each drilled on its own, then put to work telling history and philosophy lessons.</p>
+
+    <h2>Lessons</h2>
+    <ol class="list" id="lessons"></ol>
+
+    <h2>Drills</h2>
+    <p>One technique per page. Each names what it teaches, who it was learned from, and the few lines of code that matter.</p>
+    <ol class="list" id="drills"></ol>
+
+    <hr>
+    <p class="meta">Research notes, the technique catalog and the lesson workflow live in <code>research/</code> and <code>.claude/skills/animate-lesson</code>.</p>
+  </main>
+  <script type="module" src="/shared/gallery.js"></script>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scrollytelling</title>
+  <link rel="stylesheet" href="/shared/studio.css">
+  <style>
+    /* .wide centres with a transform; a transform at a half pixel leaves a seam on the sticky layer
+       on phones (and traps position: fixed). Centre this figure with a margin instead. */
+    figure.wide.scrolly-fig { transform: none; margin-left: calc((100% - min(var(--wide), 100vw - 2 * var(--pad))) / 2); }
+    .frame { width: min(100%, 78svh, 520px); margin: 0 auto; }
+
+    /* Sticky graphic, scrolling steps. CSS does the sticking; ScrollTrigger only reports progress. */
+    .scrolly { display: grid; grid-template-columns: minmax(220px, 280px) 1fr; gap: 0 48px; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--rule); }
+    /* Stuck, the graphic sits centred in the viewport; at the top of the page it starts right under the rule. */
+    .graphic { grid-column: 2; grid-row: 1; align-self: start; position: sticky; top: max(16px, calc(50svh - 290px)); padding-top: 24px; }
+    .graphic svg { display: block; width: 100%; }
+    .state { font-family: var(--sans); font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; gap: 12px; margin-top: 6px; }
+    .state b { color: var(--ink); font-weight: 600; }
+    .dot { fill: var(--mark-strong); transition: fill var(--dur) var(--ease-out); }
+    .is-accent .dot.g2 { fill: var(--mark-accent); }
+    .annot { font-family: var(--sans); font-size: 12px; fill: var(--muted); opacity: 0; transition: opacity var(--dur) var(--ease-out); }
+    .baseline { stroke: var(--mark-ink); stroke-width: 1; opacity: 0; transition: opacity var(--dur) var(--ease-out); }
+    .show-bars .annot.bars, .show-bars .baseline { opacity: 1; }
+    .show-groups .annot.groups { opacity: 1; }
+
+    .steps { grid-column: 1; grid-row: 1; padding: 35vh 0 30vh; }
+    .step { margin-bottom: 70vh; opacity: .3; transition: opacity var(--dur) var(--ease-out); }
+    .step:last-child { margin-bottom: 0; }
+    .step.is-active { opacity: 1; }
+    .step p { margin: 0; font-size: 1.05rem; }
+    .step .n { font-family: var(--sans); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+    /* The scrubbed step is long, and its text holds still while the scrub runs. */
+    .step.is-scrub { min-height: 150vh; }
+    .step.is-scrub .text { position: sticky; top: 40vh; }
+
+    .trigger-line { position: fixed; left: 0; right: 0; top: var(--line, 60%); border-top: 1px dashed var(--mark-accent); z-index: 5; pointer-events: none; display: none; }
+    .trigger-line span { position: absolute; right: 8px; top: 2px; font-family: var(--sans); font-size: 11px; color: var(--mark-accent); }
+    .show-line .trigger-line { display: block; }
+
+    /* Phones: graphic on top, opaque; steps slide underneath and are read in the lower half. */
+    @media (max-width: 760px) {
+      .scrolly { display: block; }
+      .graphic { top: 0; z-index: 2; background: var(--bg); padding: 10px 0 8px; border-bottom: 1px solid var(--rule); }
+      .frame { width: min(100%, 42svh); }
+      .steps { padding: 30vh 0 20vh; position: relative; z-index: 1; }
+      .step { margin-bottom: 55vh; }
+      .step.is-scrub { min-height: 110vh; }
+      .step.is-scrub .text { top: 58svh; }
+    }
+  </style>
+</head>
+<body>
+  <div class="trigger-line" aria-hidden="true"><span>trigger line</span></div>
+  <main class="page">
+    <div class="runhead"><a href="../../">Motion Studio</a> / Drill 04</div>
+    <h1>Scrollytelling</h1>
+    <p class="dek">A graphic holds still while the text scrolls past it. Each paragraph is a state; one of them is tied to the scrollbar itself.</p>
+
+    <p>This is the pattern The Pudding and the New York Times use for data stories. The mechanism has three parts: a sticky graphic, a column of steps, and something that reports which step is on the trigger line. Scroll on.</p>
+
+    <figure class="wide scrolly-fig">
+      <div class="fig-title">Sixty dots, five arrangements</div>
+      <div class="controls">
+        <button id="toggle-line" type="button" aria-pressed="false">Show trigger line</button>
+      </div>
+      <div class="scrolly" id="scrolly">
+        <div class="graphic"><div class="frame">
+          <svg id="dots" viewBox="0 0 400 400" role="img" aria-label="Sixty dots that rearrange as each step scrolls past.">
+            <line class="baseline" x1="80" x2="320" y1="352" y2="352"/>
+            <text class="annot bars" x="120" y="372" text-anchor="middle">A</text>
+            <text class="annot bars" x="200" y="372" text-anchor="middle">B</text>
+            <text class="annot bars" x="280" y="372" text-anchor="middle">C</text>
+            <text class="annot groups" x="105" y="268" text-anchor="middle">A, 30</text>
+            <text class="annot groups" x="275" y="80" text-anchor="middle">B, 18</text>
+            <text class="annot groups" x="285" y="338" text-anchor="middle">C, 12</text>
+            <g id="dot-layer"></g>
+          </svg>
+          <div class="state" aria-live="polite"><span><b id="state-n">1 / 5</b> <span id="state-name">Scatter</span></span><span id="state-extra"></span></div>
+        </div></div>
+        <div class="steps">
+          <section class="step" data-layout="scatter"><div class="text"><div class="n">Step 1</div><p>Sixty dots, scattered. This is the opening state. The graphic is sticky, so it stays in view while this paragraph moves up past it.</p></div></section>
+          <section class="step" data-layout="grid"><div class="text"><div class="n">Step 2</div><p>When this paragraph crosses the trigger line, the dots tween to a grid. A step is a discrete state: crossing the line in either direction picks the layout.</p></div></section>
+          <section class="step" data-layout="groups"><div class="text"><div class="n">Step 3</div><p>Now three groups. The smallest takes the accent color, because the next steps are about it, and color is the one thing the eye can track through every layout.</p></div></section>
+          <section class="step is-scrub" data-layout="bars"><div class="text"><div class="n">Step 4, scrubbed</div><p>This step is tied to the scrollbar. Scroll slowly and the dots walk to their columns one at a time; stop and they stop; scroll back and they walk back.</p></div></section>
+          <section class="step" data-layout="ring"><div class="text"><div class="n">Step 5</div><p>Finally a ring. The same sixty dots, the accent group still together. Scroll back up and every state replays in reverse.</p></div></section>
+        </div>
+      </div>
+      <figcaption>Turn on the trigger line, then scroll. A step becomes active when its top crosses the line. Steps 1, 2, 3 and 5 snap to a layout with a short tween; step 4 maps scroll progress from 0 to 1 onto the walk, so the counter beside the graphic moves with your hand.</figcaption>
+    </figure>
+
+    <section class="notes">
+      <h2>What this teaches</h2>
+      <ul>
+        <li><strong>Let CSS do the sticking.</strong> <code>position: sticky</code> on the graphic is cheaper and less fragile than pinning with JavaScript; ScrollTrigger is used only to report which step is on the line and how far through it you are.</li>
+        <li><strong>Model the graphic as states, not as a script.</strong> Each step names a layout, and crossing the line from either direction tweens to that layout from wherever the dots are now. Fast scrolling, scrolling back and reloading mid-page all land in the right place.</li>
+        <li><strong>Scrub only what deserves a hand on it.</strong> Discrete steps read as chapters; a scrubbed step reads as a process. Give the scrubbed step extra height and keep its text sticky so the reader has room to drive it.</li>
+        <li><strong>On phones, stack instead of splitting.</strong> The graphic sits on top with an opaque background and the steps slide under it; the trigger line moves down to the middle of the reading area.</li>
+        <li><strong>Keep one thing constant across states.</strong> The accent group is the thread the reader follows through every rearrangement.</li>
+      </ul>
+
+      <h2>The lines that matter</h2>
+<pre><code>// One trigger per step. Any crossing re-derives the state from scroll position:
+// the current step is the last one whose top has passed the line.
+const triggers = steps.map((step) =&gt; ScrollTrigger.create({
+  trigger: step, start: 'top 60%', end: 'bottom 60%',
+  onEnter: sync, onLeave: sync, onEnterBack: sync, onLeaveBack: sync,
+}));
+function sync() {
+  const y = triggers[0].scroll();
+  activate(triggers.findLastIndex((t) =&gt; y &gt;= t.start));
+}
+
+// The scrubbed step: progress 0..1 becomes how far each dot has walked.
+ScrollTrigger.create({
+  trigger: scrubStep, start: 'top 60%', end: 'bottom 60%',
+  onUpdate: (self) =&gt; active === SCRUB &amp;&amp; walk(self.progress),
+});
+
+// Every move, discrete or scrubbed, retargets from where the dots are now.
+gsap.to(cur, { x: (i) =&gt; to[i].x, y: (i) =&gt; to[i].y, overwrite: true, onUpdate: draw });</code></pre>
+
+      <h2>Learned from</h2>
+      <p>The Pudding, <a href="https://pudding.cool/process/how-to-implement-scrollytelling/">How to implement scrollytelling with six different libraries</a>; Russell Samora's <a href="https://github.com/russellsamora/scrollama">Scrollama</a>, whose step-and-offset model this follows with ScrollTrigger in its place.</p>
+    </section>
+  </main>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

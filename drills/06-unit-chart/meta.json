@@ -1,0 +1,7 @@
+{
+  "title": "Making big numbers felt",
+  "summary": "A unit chart on Canvas 2D: several thousand dots, one per thousand, that pour into a pile, split into groups and stack into bars with per-dot staggered ease-out tweens.",
+  "skill": "data storytelling",
+  "library": ["Canvas 2D"],
+  "learnedFrom": ["Neil Halloran, The Fallen of World War II", "Andrew Kahn and Jamelle Bouie, Slate, animated interactive of the Atlantic slave trade"]
+}

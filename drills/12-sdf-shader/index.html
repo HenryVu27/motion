@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Signed Distance Shader</title>
+  <link rel="stylesheet" href="/shared/studio.css">
+  <style>
+    .stage canvas { cursor: crosshair; }
+    .stage .fallback { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; font-family: var(--sans); font-size: 14px; color: var(--muted); }
+    .fig-title span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="runhead"><a href="../../">Motion Studio</a> / Drill 12</div>
+    <h1>Signed distance shader</h1>
+    <p class="dek">Shapes with no vertices. Every pixel asks one question, how far am I from the edge, and the answer draws the picture.</p>
+
+    <figure class="wide">
+      <div class="fig-title">Two distance fields, one smooth union <span id="k-note">smooth union, k = 0.25</span></div>
+      <div class="stage" id="stage">
+        <canvas aria-label="A shader drawing a morphing box and a circle that melt together where they meet"></canvas>
+      </div>
+      <div class="controls">
+        <button id="iso" type="button" aria-pressed="false">Iso-lines</button>
+        <button id="pause" type="button" aria-pressed="false">Pause morph</button>
+        <label>Smoothness k <input id="k" type="range" min="0" max="0.6" step="0.01" value="0.25"><output id="k-out">0.25</output></label>
+      </div>
+      <figcaption>Move the pointer over the figure to drag the circle. Turn on Iso-lines to see the field itself: each line is a set of points at equal distance from the edge. Set k to zero and the two shapes meet with a crease; raise it and they melt into one.</figcaption>
+    </figure>
+
+    <section class="notes">
+      <h2>What this teaches</h2>
+      <ul>
+        <li><strong>A shape is a function.</strong> A signed distance function returns how far a point is from the edge: negative inside, zero on it, positive outside. A circle is <code>length(p) - r</code>. Because the value is a distance, outlines, glows, offsets and rounding all come for free (<code>sdBox(p) - 0.04</code> rounds the box's corners).</li>
+        <li><strong>Combining shapes is arithmetic.</strong> <code>min(a, b)</code> is union, <code>max(a, b)</code> intersection, <code>max(a, -b)</code> subtraction. Quilez's smooth minimum blends the two fields where they are within <code>k</code> of each other, which is the melting you see. Mixing a box and a circle field morphs one into the other; the result is no longer an exact distance but stays safe to shade and march.</li>
+        <li><strong>Antialias with <code>fwidth</code>.</strong> <code>fwidth(d)</code> is how much the distance changes across one pixel, so dividing by it converts distance into pixels. Edges and iso-lines then stay exactly 1 to 2 pixels wide on any screen and at any zoom, with no multisampling.</li>
+        <li><strong>Resolution-independent units.</strong> Map pixels to <code>(2 * fragCoord - res) / res.y</code>: centered, y up, the stage is two units tall. Shapes and the pointer use the same units, so nothing depends on screen size or pixel ratio.</li>
+        <li><strong>Raw WebGL2 for a single full-screen pass.</strong> A fragment shader on one quad needs no scene graph, camera or matrices, so three.js would add weight and hide the pipeline. Here it is one oversized triangle placed by <code>gl_VertexID</code>, no buffers, and a handful of uniforms; the token colors go in as uniforms and come out unchanged. Reach for three.js when the shader has to live inside a 3D scene.</li>
+      </ul>
+
+      <h2>The lines that matter</h2>
+<pre><code>float sdCircle(vec2 p, float r) { return length(p) - r; }
+float sdBox(vec2 p, vec2 b) {
+  vec2 d = abs(p) - b;
+  return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+}
+float smin(float a, float b, float k) {
+  float h = max(k - abs(a - b), 0.0) / k;
+  return min(a, b) - h * h * k * 0.25;
+}
+
+float d = smin(mix(box, circle, morph), sdCircle(p - uMouse, 0.24), uK);
+float edge = clamp(1.5 - abs(d) / fwidth(d), 0.0, 1.0);   // 2 px edge, any resolution
+col = mix(col, uAccent, edge);</code></pre>
+
+      <h2>Learned from</h2>
+      <p>Inigo Quilez, <a href="https://iquilezles.org/articles/distfunctions2d/">2D distance functions</a> and <a href="https://iquilezles.org/articles/smin/">smooth minimum</a>, for the exact box distance, the polynomial smooth union and the iso-line view of a field; Patricio Gonzalez Vivo and Jen Lowe, <a href="https://thebookofshaders.com">The Book of Shaders</a>, for thinking in fragment shaders and normalized coordinates.</p>
+    </section>
+  </main>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

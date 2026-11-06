@@ -1,0 +1,7 @@
+{
+  "title": "GSAP timeline choreography",
+  "summary": "Sequencing an SVG diagram with one GSAP timeline, DrawSVG and position parameters, then playing, reversing and scrubbing it as a single object.",
+  "skill": "choreography",
+  "library": ["gsap", "DrawSVGPlugin"],
+  "learnedFrom": ["GSAP docs, Timeline", "Cassie Evans, cassie.codes"]
+}

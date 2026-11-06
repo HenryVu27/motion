@@ -1,0 +1,7 @@
+{
+  "title": "CSS scroll-driven animations",
+  "summary": "A reading progress bar on scroll() and rows that fill on named view() timelines with animation-range, in native CSS scroll-driven animations with an IntersectionObserver fallback.",
+  "skill": "scroll",
+  "library": ["CSS scroll-driven animations"],
+  "learnedFrom": ["Bramus Van Damme, scroll-driven-animations.style", "Jhey Tompkins, jhey.dev"]
+}

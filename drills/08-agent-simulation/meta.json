@@ -1,0 +1,7 @@
+{
+  "title": "A playable model",
+  "summary": "Schelling's segregation model as a Nicky Case style playable simulation: a pure model module, a Canvas 2D grid and a live sparkline of the outcome against the individual demand.",
+  "skill": "simulation",
+  "library": ["Canvas 2D"],
+  "learnedFrom": ["Nicky Case and Vi Hart, Parable of the Polygons", "Thomas C. Schelling, Dynamic Models of Segregation (1971)"]
+}

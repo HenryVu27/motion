@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Easing and Springs</title>
+  <link rel="stylesheet" href="/shared/studio.css">
+  <style>
+    .lanes { border-top: 1px solid var(--ink); border-bottom: 1px solid var(--rule); padding: 8px 0; }
+    .lane { display: grid; grid-template-columns: 112px 1fr; align-items: center; height: 56px; font-family: var(--sans); font-size: 14px; color: var(--text-2); }
+    .lane + .lane { border-top: 1px solid var(--rule); }
+    .lane small { display: block; font-size: 12px; color: var(--muted); }
+    .track { position: relative; height: 100%; }
+    .dot { position: absolute; top: 50%; left: 0; width: 22px; height: 22px; margin-top: -11px; border-radius: 50%; background: var(--mark-ink); will-change: transform; }
+    .lane.is-accent .dot { background: var(--mark-accent); }
+    .lane.is-accent { color: var(--ink); }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="runhead"><a href="../../">Motion Studio</a> / Drill 01</div>
+    <h1>Easing and springs</h1>
+    <p class="dek">The same move, four ways. The curve decides whether an interface feels quick, sluggish or alive.</p>
+
+    <figure class="wide">
+      <div class="fig-title">Four timing functions, one distance <span id="dur-note">400 ms</span></div>
+      <div class="lanes" id="lanes">
+        <div class="lane" data-kind="linear"><div>linear<small>no acceleration</small></div><div class="track"><div class="dot"></div></div></div>
+        <div class="lane" data-kind="ease-in"><div>ease-in<small>slow start</small></div><div class="track"><div class="dot"></div></div></div>
+        <div class="lane is-accent" data-kind="ease-out"><div>ease-out<small>fast start</small></div><div class="track"><div class="dot"></div></div></div>
+        <div class="lane" data-kind="spring"><div>spring<small>keeps velocity</small></div><div class="track"><div class="dot"></div></div></div>
+      </div>
+      <div class="controls">
+        <button id="play" type="button">Play</button>
+        <label>Duration <input id="dur" type="range" min="150" max="1200" step="50" value="400"><output id="dur-out">400</output> ms</label>
+        <label>Bounce <input id="bounce" type="range" min="0" max="0.6" step="0.05" value="0.25"><output id="bounce-out">0.25</output></label>
+      </div>
+      <figcaption>Press Play, then press it again before the dots arrive. The three curves restart from rest and jerk; the spring turns around with the speed it already had.</figcaption>
+    </figure>
+
+    <section class="notes">
+      <h2>What this teaches</h2>
+      <ul>
+        <li><strong>Ease-out for anything entering or responding to the user.</strong> The motion happens at the start, right when the click lands, so the interface feels instant.</li>
+        <li><strong>Ease-in is for things leaving</strong>, and even then it is rarely right in UI: the first frames barely move, which reads as lag.</li>
+        <li><strong>Keep UI moves short:</strong> 150 to 300 ms for small elements. Narrative motion in a lesson can be slower because the viewer is watching, not waiting.</li>
+        <li><strong>Springs are physics, not curves.</strong> They have no fixed duration; they carry velocity, so an interruption flows instead of snapping. Use them for anything the user can grab, toggle or interrupt.</li>
+      </ul>
+
+      <h2>The lines that matter</h2>
+<pre><code>// A curve: the browser's own engine (Web Animations API)
+el.animate([{ transform: `translateX(${from}px)` }, { transform: `translateX(${to}px)` }],
+  { duration, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'forwards' });
+
+// A spring: Motion tracks velocity, so a retarget mid-flight is smooth
+animate(el, { x: to }, { type: 'spring', visualDuration: duration / 1000, bounce });</code></pre>
+
+      <h2>Learned from</h2>
+      <p>Emil Kowalski's <a href="https://emilkowal.ski/ui/great-animations">Great animations</a> and <a href="https://animations.dev">animations.dev</a>; Josh Comeau's <a href="https://www.joshwcomeau.com/animation/a-friendly-introduction-to-spring-physics/">friendly introduction to spring physics</a>.</p>
+    </section>
+  </main>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

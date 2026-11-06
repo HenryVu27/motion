@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CSS scroll-driven animations</title>
+  <link rel="stylesheet" href="/shared/studio.css">
+  <style>
+    /* ---------- Base state: what every browser sees. Finished, readable, nothing hidden. ---------- */
+    .reading-bar { position: fixed; inset: 0 0 auto 0; height: 3px; z-index: 10; background: var(--mark-accent);
+      transform-origin: 0 50%; transform: scaleX(0); pointer-events: none; }
+
+    .stage { aspect-ratio: auto; height: clamp(340px, 62vh, 500px); }
+    .scroller { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; font-family: var(--sans); font-size: 14px; color: var(--text-2); }
+    .scroller-bar { position: sticky; top: 0; z-index: 1; height: 3px; background: var(--mark); }
+    .scroller-bar span { display: block; height: 100%; background: var(--mark-ink); transform-origin: 0 50%; transform: scaleX(0); }
+    .hint { height: 55%; display: flex; align-items: flex-end; padding: 0 0 18px; color: var(--muted); }
+    .hint.end { align-items: flex-start; padding: 18px 0 0; }
+    .rows { list-style: none; margin: 0; padding: 0; }
+    .row { display: grid; grid-template-columns: 64px 1fr 48px; align-items: center; gap: 14px; height: 48px; border-top: 1px solid var(--rule); }
+    .row:last-child { border-bottom: 1px solid var(--rule); }
+    .track { height: 8px; border-radius: 4px; background: var(--mark); overflow: hidden; }
+    .fill { display: block; height: 100%; background: var(--mark-accent); transform-origin: 0 50%; }
+    .pct { text-align: right; font-variant-numeric: tabular-nums lining-nums; color: var(--ink); visibility: hidden; }
+    .support { color: var(--muted); }
+
+    /* ---------- Enhancement: only where the browser can tie animations to scroll. ---------- */
+    @property --p { syntax: "<integer>"; inherits: true; initial-value: 0; }
+    @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    @keyframes count { from { --p: 0; } to { --p: 100; } }
+    @keyframes rise { from { opacity: 0; transform: translateY(1.2em); } }
+
+    @supports (animation-timeline: view()) {
+      /* 1. A scroll() timeline: progress of a scroller from top to bottom. */
+      .reading-bar { animation: grow linear both; animation-timeline: scroll(root block); }
+      .scroller-bar span { animation: grow linear both; animation-timeline: scroll(nearest block); }
+
+      /* 2. A named view() timeline: each row's trip through the scroller, shared with its children. */
+      .row { view-timeline: --row block; animation: count linear both; animation-timeline: --row; }
+      .row .fill { animation: grow linear both; animation-timeline: --row; }
+
+      /* 3. animation-range: which slice of that trip the keyframes span. */
+      .row, .row .fill { animation-range: entry 0% entry 100%; }
+      [data-range="contain"] .row, [data-range="contain"] .row .fill { animation-range: contain 0% contain 100%; }
+      [data-range="cover"] .row, [data-range="cover"] .row .fill { animation-range: cover 0% cover 100%; }
+      [data-range="exit"] .row, [data-range="exit"] .row .fill { animation-range: exit 0% exit 100%; }
+
+      /* A registered integer can be animated, then printed with a counter: a live readout with no JS. */
+      .pct { visibility: visible; counter-reset: p var(--p); }
+      .pct::after { content: counter(p) "%"; }
+
+      /* 4. Prose that rises into place. Movement only for readers who have not asked for less. */
+      @media (prefers-reduced-motion: no-preference) {
+        .reveal { animation: rise linear both; animation-timeline: view(); animation-range: entry 10% cover 30%; }
+      }
+    }
+
+    /* ---------- Fallback, switched on by main.js only when the feature test fails. ---------- */
+    .no-sda .fill { transform: scaleX(0); transition: transform var(--dur-slow) var(--ease-out); }
+    .no-sda .row.is-in .fill { transform: none; }
+    .no-sda .reveal { opacity: 0; transform: translateY(1.2em); transition: opacity var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out); }
+    .no-sda .reveal.is-in { opacity: 1; transform: none; }
+  </style>
+</head>
+<body>
+  <div class="reading-bar" aria-hidden="true"></div>
+  <main class="page">
+    <div class="runhead"><a href="../../">Motion Studio</a> / Drill 03</div>
+    <h1>CSS scroll-driven animations</h1>
+    <p class="dek">Swap the clock of an ordinary CSS animation for the scrollbar. No scroll listeners, no library, and it runs off the main thread.</p>
+
+    <figure class="wide">
+      <div class="fig-title">One scroller, two kinds of timeline <span id="support" class="support"></span></div>
+      <div class="stage">
+        <div class="scroller" id="scroller" data-range="entry" tabindex="0" aria-label="Scrollable demo: rows whose bars fill as they move through this box">
+          <div class="scroller-bar" aria-hidden="true"><span></span></div>
+          <div class="hint">Scroll inside this box. The thin bar on top is a scroll() timeline; each row runs on its own view() timeline.</div>
+          <ol class="rows" id="rows"></ol>
+          <div class="hint end">End of the scroller.</div>
+        </div>
+      </div>
+      <div class="controls" id="ranges">
+        <span>animation-range</span>
+        <button type="button" data-range="entry" aria-pressed="true">entry</button>
+        <button type="button" data-range="contain" aria-pressed="false">contain</button>
+        <button type="button" data-range="cover" aria-pressed="false">cover</button>
+        <button type="button" data-range="exit" aria-pressed="false">exit</button>
+      </div>
+      <figcaption>Each bar's length is that row's animation progress. With <code>entry</code> a bar fills while its row crosses the bottom edge; <code>contain</code> while the row is fully inside; <code>cover</code> over the whole trip; <code>exit</code> while it leaves through the top. The accent bar at the very top of the page is the same idea on the page itself.</figcaption>
+    </figure>
+
+    <section class="notes">
+      <h2>What this teaches</h2>
+      <ul>
+        <li class="reveal"><strong>A scroll position is a timeline.</strong> <code>scroll()</code> follows a scroller from top to bottom; <code>view()</code> follows one element through the scrollport. The <code>@keyframes</code> stay ordinary; only the clock changes.</li>
+        <li class="reveal"><strong>animation-range picks the slice of the trip.</strong> Name it by phase (<code>entry</code>, <code>contain</code>, <code>cover</code>, <code>exit</code>) plus a percentage, instead of computing pixel offsets by hand.</li>
+        <li class="reveal"><strong>Name a timeline when the tracked element is not the one that moves.</strong> <code>view-timeline: --row</code> on the row lets its small fill bar ride the row's timeline rather than its own 8 px one.</li>
+        <li class="reveal"><strong>Keep the effect on the compositor.</strong> Scroll-driven <code>transform</code> and <code>opacity</code> run off the main thread, so they stay smooth while JavaScript is busy. The percentage readout animates a registered custom property, which costs main-thread work; use that trick sparingly.</li>
+        <li class="reveal"><strong>Make the unsupported state the finished state.</strong> Everything sits inside <code>@supports (animation-timeline: view())</code>. Older browsers see full content, and a small IntersectionObserver adds the reveals back.</li>
+      </ul>
+
+      <h2 class="reveal">The lines that matter</h2>
+<pre class="reveal"><code>@keyframes grow {
+  from { transform: scaleX(0); } to { transform: scaleX(1); }
+}
+
+@supports (animation-timeline: view()) {
+  /* reading progress: the root scroller is the clock */
+  .reading-bar {
+    animation: grow linear both;
+    animation-timeline: scroll(root block);
+  }
+  /* a row publishes its view timeline; its fill subscribes */
+  .row { view-timeline: --row block; }
+  .row .fill {
+    animation: grow linear both;
+    animation-timeline: --row;
+    animation-range: entry 0% entry 100%;
+  }
+  /* prose: done rising when 30% of the way through */
+  .reveal {
+    animation: rise linear both;
+    animation-timeline: view();
+    animation-range: entry 10% cover 30%;
+  }
+}</code></pre>
+      <p class="reveal">Write <code>animation-timeline</code> after the <code>animation</code> shorthand: the shorthand resets it.</p>
+
+      <h2 class="reveal">Learned from</h2>
+      <p class="reveal">Bramus Van Damme's <a href="https://scroll-driven-animations.style">scroll-driven-animations.style</a>, especially its range visualiser; Jhey Tompkins, <a href="https://jhey.dev">jhey.dev</a>, for scroll-driven demos built from plain CSS.</p>
+    </section>
+  </main>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

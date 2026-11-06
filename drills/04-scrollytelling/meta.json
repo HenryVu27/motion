@@ -1,0 +1,7 @@
+{
+  "title": "Scrollytelling",
+  "summary": "The sticky-graphic, scrolling-steps pattern built with CSS sticky and GSAP ScrollTrigger, with discrete step states and one step scrubbed by scroll progress.",
+  "skill": "scroll",
+  "library": ["gsap", "ScrollTrigger"],
+  "learnedFrom": ["The Pudding, How to implement scrollytelling", "Russell Samora, Scrollama"]
+}

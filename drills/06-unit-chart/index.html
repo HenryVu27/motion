@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Unit Chart</title>
+  <link rel="stylesheet" href="/shared/studio.css">
+  <style>
+    @media (max-width: 640px) { #stage { aspect-ratio: 4 / 5; } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="runhead"><a href="../../">Motion Studio</a> / Drill 06</div>
+    <h1>Making big numbers felt</h1>
+    <p class="dek">A million is an abstraction; five thousand dots are a crowd. Count in units the eye can see, then move the units, never the bars.</p>
+
+    <figure class="wide">
+      <div class="fig-title">Toy data: 5,100 dots in four invented groups <span id="scale">1 dot = 1,000 people</span></div>
+      <div class="stage" id="stage"><canvas id="canvas" aria-label="Several thousand small squares that rearrange between one pile, four piles by group, and four bars. Toy data."></canvas></div>
+      <div class="controls" role="group" aria-label="Layout">
+        <button type="button" data-layout="pile" aria-pressed="true">One pile</button>
+        <button type="button" data-layout="groups" aria-pressed="false">Split by group</button>
+        <button type="button" data-layout="bars" aria-pressed="false">Stack as bars</button>
+      </div>
+      <figcaption>The numbers are made up; the drill is about the mechanism. Press the three buttons in order, and press another before the dots land: each dot leaves from wherever it is, a few milliseconds after its neighbour, so the crowd pours rather than jumps. The size of a dot never changes, so every layout is a fair count.</figcaption>
+    </figure>
+
+    <section class="notes">
+      <h2>What this teaches</h2>
+      <ul>
+        <li><strong>State the unit on the figure, every time.</strong> "1 dot = 1,000 people" is the sentence that turns a texture into a quantity. Pick the unit so the total lands in the low thousands: enough to feel like a crowd, few enough to draw every frame.</li>
+        <li><strong>Hold the dot size fixed across layouts.</strong> Compute one cell size that fits the most demanding layout and use it everywhere. If dots shrink when they regroup, the reader's sense of quantity is quietly lied to.</li>
+        <li><strong>Compute every layout up front, then only interpolate.</strong> A layout is an array of target positions. A transition is from, to, a start time and a per-dot delay; the frame loop just evaluates the ease.</li>
+        <li><strong>Stagger by position, not by index.</strong> A delay that follows each dot's destination left to right, plus a little noise, reads as a flow. A delay by array index reads as random flicker.</li>
+        <li><strong>One canvas, batched fills.</strong> Five thousand DOM nodes would choke on layout; on canvas they are one path per color per frame. Retarget from the current position so an interrupted move never snaps.</li>
+      </ul>
+
+      <h2>The lines that matter</h2>
+<pre><code>// Retarget: every dot starts from where it is now, with its own delay
+for (const d of dots) {
+  [d.fx, d.fy] = position(d, now);
+  [d.tx, d.ty] = layout[d.slot];
+  d.delay = 0.55 * (d.tx / width) + 0.2 * Math.random();
+}
+
+// Each frame: one ease per dot, then one fill per color
+const p = easeOutCubic(clamp((now - start - d.delay) / DURATION));
+ctx.rect(d.fx + (d.tx - d.fx) * p, d.fy + (d.ty - d.fy) * p, size, size);</code></pre>
+
+      <h2>Learned from</h2>
+      <p>Neil Halloran's <a href="https://www.neilfilms.com/ww2/">The Fallen of World War II</a> (2015), a data documentary where small figures standing for the dead pile up, split by country and regroup as the narration moves on; and Slate's <a href="https://slate.com/news-and-politics/2021/09/atlantic-slave-trade-history-animated-interactive.html">animated interactive of the Atlantic slave trade</a> by Andrew Kahn and Jamelle Bouie (2021), where every slave ship is a dot sized by the number of people it carried, so the scale is seen before it is read.</p>
+    </section>
+  </main>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

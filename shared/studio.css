@@ -1,0 +1,122 @@
+/* Motion Studio: one Garamond for prose, the system sans for everything inside a figure.
+   Tokens follow henryvu.blog so lessons can move there unchanged. */
+
+@font-face { font-family: "EB Garamond"; src: url("/fonts/ebgaramond-400.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "EB Garamond"; src: url("/fonts/ebgaramond-500.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: "EB Garamond"; src: url("/fonts/ebgaramond-600.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "EB Garamond"; src: url("/fonts/ebgaramond-400-italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "Garamond Fallback"; src: local("Times New Roman"), local("TimesNewRomanPSMT"); font-style: normal;
+  size-adjust: 95.2%; ascent-override: 105.8%; descent-override: 31.3%; line-gap-override: 0%; }
+
+/* ---------- Tokens ---------- */
+:root {
+  --bg: #f3eee3;
+  --ink: #1d1a16;
+  --text: #2a2622;
+  --text-2: #56504a;
+  --muted: #6e675e;
+  --rule: #d5cfc3;
+  --tint: #ebe5d8;
+  --accent: #7f2a1e;
+  --gold: #7a5c14;
+
+  /* marks: pale by default, the accent goes to what the figure is about */
+  --mark: #ddd5c6;
+  --mark-strong: #b9ae9b;
+  --mark-ink: #4a443d;
+  --mark-accent: #b84a32;
+  --mark-accent-wash: #f0d9cf;
+
+  --serif: "EB Garamond", "Garamond Fallback", "Iowan Old Style", Palatino, Georgia, serif;
+  --sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --measure: 660px;
+  --wide: 880px;
+  --pad: clamp(16px, 5vw, 40px);
+
+  /* motion: shared durations and curves, so every drill moves with one voice */
+  --dur-fast: 160ms;
+  --dur: 320ms;
+  --dur-slow: 700ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #171512; --ink: #f1ebdf; --text: #ddd6c8; --text-2: #b9b1a3; --muted: #958d80;
+    --rule: #3a352e; --tint: #221f1b; --accent: #e08a6f; --gold: #d6b25e;
+    --mark: #3b362f; --mark-strong: #5f574c; --mark-ink: #cfc6b6; --mark-accent: #e0775a; --mark-accent-wash: #3d241c;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #171512; --ink: #f1ebdf; --text: #ddd6c8; --text-2: #b9b1a3; --muted: #958d80;
+  --rule: #3a352e; --tint: #221f1b; --accent: #e08a6f; --gold: #d6b25e;
+  --mark: #3b362f; --mark-strong: #5f574c; --mark-ink: #cfc6b6; --mark-accent: #e0775a; --mark-accent-wash: #3d241c;
+  color-scheme: dark;
+}
+
+/* ---------- Base ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html { background: var(--bg); -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: var(--serif); font-size: 20px; line-height: 1.6;
+  font-synthesis: none; font-variant-numeric: oldstyle-nums proportional-nums;
+  overflow-x: hidden;
+}
+h1, h2, h3 { color: var(--ink); font-weight: 500; line-height: 1.2; text-wrap: balance; }
+h1 { font-size: 2.2rem; margin: 0 0 .3em; }
+h2 { font-size: 1.45rem; margin: 2em 0 .5em; }
+p { text-wrap: pretty; }
+a { color: inherit; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .18em;
+  text-decoration-color: color-mix(in oklab, currentColor 35%, transparent); }
+a:hover { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+code { font-family: var(--mono); font-size: .76em; color: var(--ink); background: var(--tint); padding: .12em .36em; border-radius: 3px; }
+pre { font-family: var(--mono); font-size: 14px; line-height: 1.6; background: var(--tint); padding: 14px 16px; border-radius: 4px; overflow-x: auto; }
+pre code { background: none; padding: 0; font-size: inherit; }
+hr { border: 0; border-top: 1px solid var(--rule); margin: 2.4em 0; }
+
+/* ---------- Layout ---------- */
+.page { max-width: calc(var(--measure) + 2 * var(--pad)); margin: 0 auto; padding: 40px var(--pad) 96px; }
+/* Centered with margins, not a transform: a transform creates a containing block (breaking
+   position: fixed inside figures) and leaves half-pixel seams on odd widths. */
+.wide { --w: min(var(--wide), calc(100vw - 2 * var(--pad))); width: var(--w); margin-left: calc((100% - var(--w)) / 2); }
+.runhead { font-family: var(--sans); font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 28px; }
+.runhead a { text-decoration: none; }
+.dek { font-size: 1.1rem; color: var(--text-2); margin-top: 0; }
+.meta { font-family: var(--sans); font-size: 13px; color: var(--muted); }
+
+/* ---------- Figures ---------- */
+figure { margin: 2em 0; }
+.stage { position: relative; width: 100%; aspect-ratio: 16 / 10; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--rule); overflow: hidden; }
+.stage canvas, .stage svg { display: block; width: 100%; height: 100%; }
+figcaption { font-family: var(--sans); font-size: 14px; line-height: 1.5; color: var(--muted); margin-top: 10px; }
+.fig-title { font-family: var(--sans); font-size: 14px; font-weight: 600; color: var(--ink); display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.fig-title span { font-weight: 400; color: var(--muted); }
+
+/* ---------- Controls: sans, quiet, no boxes beyond a hairline ---------- */
+.controls { font-family: var(--sans); font-size: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-top: 12px; color: var(--text-2); }
+.controls button {
+  font-family: var(--sans); font-size: 14px; color: var(--ink); background: transparent;
+  border: 1px solid var(--rule); border-radius: 999px; padding: 5px 14px; cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+.controls button:hover { border-color: var(--ink); }
+.controls button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.controls label { display: inline-flex; align-items: center; gap: 8px; }
+.controls input[type="range"] { accent-color: var(--accent); width: 180px; }
+.controls output { font-variant-numeric: tabular-nums lining-nums; min-width: 3ch; color: var(--ink); }
+
+/* ---------- Notes on a drill: what it teaches and how ---------- */
+.notes h2 { font-size: 1.2rem; }
+.notes ul { padding-left: 1.1em; }
+.notes li { margin: .3em 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; scroll-behavior: auto !important; }
+}

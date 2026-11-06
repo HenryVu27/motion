@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GSAP timeline choreography</title>
+  <link rel="stylesheet" href="/shared/studio.css">
+  <style>
+    /* The diagram: SVG for shapes, HTML for labels so text stays a readable size at every width. */
+    .link { fill: none; stroke: var(--mark-strong); stroke-width: 2.5; stroke-linecap: round; }
+    .node circle { fill: var(--bg); stroke: var(--mark-ink); stroke-width: 2; }
+    .conclusion circle { stroke: var(--mark-accent); }
+    .conclusion .glow { fill: var(--mark-accent); stroke: none; opacity: 0; }
+    .stage { aspect-ratio: 2 / 1; }
+    .labels { position: absolute; inset: 0; pointer-events: none; font-family: var(--sans); font-size: 13px; color: var(--text-2); }
+    .labels span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+    .labels .is-accent { color: var(--ink); font-weight: 600; }
+
+    /* The ruler: every tween as a bar on the timeline's own clock, a poor man's GSDevTools. */
+    .ruler { font-family: var(--sans); font-size: 12px; color: var(--muted); margin-top: 14px; border-bottom: 1px solid var(--rule); padding-bottom: 8px; }
+    .row { display: grid; grid-template-columns: 112px 104px 1fr; align-items: center; height: 22px; white-space: nowrap; }
+    .row > * { overflow: hidden; text-overflow: ellipsis; }
+    .row code { font-size: 11px; background: none; padding: 0; color: var(--text-2); }
+    .track { position: relative; height: 100%; container-type: inline-size; }
+    .bar { position: absolute; top: 8px; height: 6px; border-radius: 3px; background: var(--mark); transition: background var(--dur-fast) var(--ease-out); }
+    .row.is-live .bar { background: var(--mark-strong); }
+    .row.is-live { color: var(--ink); }
+    .tick { position: absolute; top: 2px; bottom: 0; border-left: 1px dashed var(--mark-strong); padding-left: 4px; font-size: 11px; line-height: 1; color: var(--text-2); }
+    .tick.is-late { border-left: 0; border-right: 1px dashed var(--mark-strong); padding: 0 4px 0 0; transform: translateX(-100%); }
+    .head { height: 18px; }
+    .tracks-overlay { position: relative; }
+    .playhead { position: absolute; top: 0; bottom: 0; left: 216px; right: 0; pointer-events: none; container-type: inline-size; }
+    .playhead::before { content: ""; position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--mark-accent);
+      transform: translateX(calc(var(--p, 0) * 100cqw)); }
+    .controls input[type="range"] { width: min(320px, 100%); }
+    @media (max-width: 560px) {
+      .row { grid-template-columns: 70px 84px 1fr; }
+      .row code { font-size: 10px; }
+      .playhead { left: 154px; }
+      .labels { font-size: 11px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="runhead"><a href="../../">Motion Studio</a> / Drill 02</div>
+    <h1>GSAP timeline choreography</h1>
+    <p class="dek">One timeline, many tweens, placed by position parameters. The whole sequence becomes a single object you can play, reverse and scrub.</p>
+
+    <figure class="wide">
+      <div class="fig-title">An argument assembles itself <span id="clock">0.00 s</span></div>
+      <div class="stage" id="stage">
+        <svg viewBox="0 0 720 360" role="img" aria-label="Three premises connect to a lemma and a conclusion.">
+          <path class="link" id="l-p1" d="M120,60 C240,60 240,180 360,180"/>
+          <path class="link" id="l-p2" d="M120,180 C200,180 280,180 360,180"/>
+          <path class="link" id="l-lemma" d="M360,180 C450,180 510,180 600,180"/>
+          <path class="link" id="l-p3" d="M120,300 C330,320 520,300 600,180"/>
+          <g class="node premise" id="n-p1"><circle cx="120" cy="60" r="22"/></g>
+          <g class="node premise" id="n-p2"><circle cx="120" cy="180" r="22"/></g>
+          <g class="node premise" id="n-p3"><circle cx="120" cy="300" r="22"/></g>
+          <g class="node lemma" id="n-lemma"><circle cx="360" cy="180" r="22"/></g>
+          <g class="node conclusion" id="n-conclusion"><circle cx="600" cy="180" r="26"/><circle class="glow" cx="600" cy="180" r="17"/></g>
+        </svg>
+        <div class="labels" aria-hidden="true">
+          <span class="premise-label" style="left: 16.67%; top: 24.5%">Premise 1</span>
+          <span class="premise-label" style="left: 16.67%; top: 57.8%">Premise 2</span>
+          <span class="premise-label" style="left: 16.67%; top: 91.1%">Premise 3</span>
+          <span class="lemma-label" style="left: 50%; top: 57.8%">Lemma</span>
+          <span class="conclusion-label is-accent" style="left: 83.33%; top: 59%">Conclusion</span>
+        </div>
+      </div>
+
+      <div class="tracks-overlay">
+        <div class="ruler" id="ruler" aria-hidden="true"></div>
+        <div class="playhead" id="playhead"></div>
+      </div>
+
+      <div class="controls">
+        <button id="play" type="button">Play</button>
+        <button id="reverse" type="button">Reverse</button>
+        <button id="slow" type="button" aria-pressed="false">Quarter speed</button>
+        <label>Scrub <input id="scrub" type="range" min="0" max="1000" step="1" value="0" aria-label="Timeline progress"></label>
+      </div>
+      <figcaption>Drag Scrub to move the playhead by hand: the diagram is a function of one number. Each ruler row is one tween; the code beside it is the position parameter that placed it. Watch the Premise 3 line start with <code>"&lt;"</code>, at the same moment as the line before it.</figcaption>
+    </figure>
+
+    <section class="notes">
+      <h2>What this teaches</h2>
+      <ul>
+        <li><strong>Build the sequence once, then drive it.</strong> A paused timeline is a value from 0 to 1. Play, reverse, scrub and scroll are just different hands on the same dial, so there is no state to keep in sync.</li>
+        <li><strong>Place tweens relative to each other, never by absolute seconds.</strong> <code>"&lt;"</code> means with the previous tween, <code>"-=0.2"</code> overlaps it, a label names a beat. Change one duration and everything after it moves along.</li>
+        <li><strong>Overlap is what makes choreography feel continuous.</strong> Starting the next tween 0.2 s before the last one ends removes the dead beat between steps.</li>
+        <li><strong>Draw lines from source to target.</strong> DrawSVG reveals a path along its own direction, so the order of points in <code>d</code> becomes the direction of the argument. No arrowheads needed.</li>
+        <li><strong>Put defaults on the timeline</strong> (<code>defaults: { duration, ease }</code>) so every tween shares one rhythm and only the exceptions are spelled out.</li>
+      </ul>
+
+      <h2>The lines that matter</h2>
+<pre><code>gsap.registerPlugin(DrawSVGPlugin);
+const tl = gsap.timeline({ paused: true, defaults: { duration: 0.5, ease: 'power2.out' } });
+
+tl.from('.premise', { scale: 0, transformOrigin: '50% 50%', stagger: 0.15 })
+  .addLabel('links', '-=0.1')
+  .from('#l-p1, #l-p2', { drawSVG: '0%', duration: 0.7, stagger: 0.1 }, 'links')
+  .from('.lemma', { scale: 0, ease: 'back.out(2)' }, '-=0.2')   // overlap
+  .from('#l-lemma', { drawSVG: '0%' })                            // after the last
+  .from('#l-p3', { drawSVG: '0%', duration: 0.9 }, '&lt;')          // with the last
+  .addLabel('land')
+  .from('.conclusion', { scale: 0, ease: 'back.out(2)' }, 'land-=0.15');
+
+scrub.oninput = () =&gt; tl.pause().progress(scrub.value / 1000);</code></pre>
+
+      <h2>Learned from</h2>
+      <p>The GSAP documentation on <a href="https://gsap.com/docs/v3/GSAP/Timeline/">Timeline</a> and its position parameter; Cassie Evans, <a href="https://www.cassie.codes">cassie.codes</a>, for SVG choreography with GSAP.</p>
+    </section>
+  </main>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

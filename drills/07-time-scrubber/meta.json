@@ -1,0 +1,7 @@
+{
+  "title": "Scrubbing through time",
+  "summary": "A time scrubber on a d3 lifespan chart: drag a year line across BCE and CE, highlight who was alive with interruptible d3 transitions, and draw uncertain dates as faded or dashed ends.",
+  "skill": "time and interaction",
+  "library": ["d3"],
+  "learnedFrom": ["Matan Stauber, Histography", "Mike Bostock, d3"]
+}

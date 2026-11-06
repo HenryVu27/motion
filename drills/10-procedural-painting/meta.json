@@ -1,0 +1,7 @@
+{
+  "title": "Procedural painting",
+  "summary": "A seeded landscape of 1D-noise ridges with atmospheric perspective, painted in back to front by a staggered brush reveal. Canvas 2D, simplex-noise and a GSAP timeline.",
+  "skill": "procedural generation",
+  "library": ["Canvas 2D", "simplex-noise", "gsap"],
+  "learnedFrom": ["Kevin Ngo, gogh", "Inigo Quilez, fBM"]
+}

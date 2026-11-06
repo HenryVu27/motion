@@ -1,0 +1,71 @@
+/* Scroll story: the figure stays pinned, prose steps scroll past it.
+   Phone: figure pinned to the top, steps read underneath. Wide screens: steps left, figure right. */
+
+.intro { padding-bottom: 24px; }
+.outro { padding-top: 0; }
+
+.scrolly { position: relative; }
+.graphic {
+  position: sticky; top: 0; z-index: 1; margin: 0;
+  height: 52vh; background: var(--bg);
+  border-bottom: 1px solid var(--rule);
+  display: flex; align-items: center; justify-content: center;
+}
+.graphic svg { width: 100%; height: 100%; max-width: 1000px; }
+
+.steps { position: relative; max-width: calc(var(--measure) + 2 * var(--pad)); margin: 0 auto; padding: 0 var(--pad) 30vh; }
+.step { min-height: 75vh; padding-top: 6vh; opacity: .35; transition: opacity var(--dur) var(--ease-out); }
+.step.is-active { opacity: 1; }
+.step-long { min-height: 150vh; }
+/* Long steps scrub the figure; their text stays readable just under the pinned graphic. */
+.step-long .step-body { position: sticky; top: calc(52vh + 16px); }
+.step p { margin: 0 0 .8em; }
+.when { font-variant: small-caps; letter-spacing: .04em; color: var(--ink); }
+.cite { font-family: var(--sans); font-size: 13px; color: var(--muted); }
+
+.choices { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 16px; }
+.choices button {
+  font-family: var(--sans); font-size: 14px; color: var(--ink); background: transparent; cursor: pointer;
+  border: 1px solid var(--rule); border-radius: 999px; padding: 6px 14px;
+  transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+.choices button:hover { border-color: var(--ink); }
+.choices button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.verdict { min-height: 4.8em; color: var(--text-2); }
+
+/* SVG marks: tokens only */
+.sea line { stroke: var(--rule); stroke-width: 1.5; stroke-linecap: round; }
+.land-edge { fill: none; stroke: var(--mark-strong); stroke-width: 1.5; }
+.land-hatch { stroke: var(--rule); stroke-width: 1.2; stroke-linecap: round; }
+.plank { stroke-width: 1.2; stroke-linejoin: round; }
+.plank.old { fill: var(--mark-strong); stroke: var(--mark-ink); }
+.plank.new { fill: var(--mark-accent-wash); stroke: var(--mark-accent); }
+.rig line, .rig path { stroke: var(--mark-ink); stroke-width: 2; fill: none; stroke-linecap: round; }
+.rig .sail { fill: var(--mark); stroke: var(--mark-strong); stroke-width: 1.2; }
+.oar { stroke: var(--mark-ink); stroke-width: 2; stroke-linecap: round; }
+.oars.lit .oar { stroke: var(--mark-accent); }
+.label { font-family: var(--sans); font-size: 17px; fill: var(--text-2); }
+.label-strong { font-family: var(--sans); font-size: 17px; font-weight: 600; fill: var(--ink); }
+.label-num { font-family: var(--sans); font-size: 17px; fill: var(--ink); font-variant-numeric: tabular-nums lining-nums; }
+.bar-bg { fill: var(--mark); }
+.bar-fg { fill: var(--mark-ink); }
+.dim { opacity: .3; }
+.ship, .rig, g { transition: opacity var(--dur) var(--ease-out); }
+
+@media (min-width: 1100px) {
+  .scrolly { display: grid; grid-template-columns: minmax(340px, 420px) 1fr; gap: 0 48px; padding-left: max(var(--pad), calc((100vw - 1400px) / 2)); padding-right: var(--pad); }
+  .graphic { grid-column: 2; grid-row: 1; height: 100vh; border-bottom: 0; }
+  .steps { grid-column: 1; grid-row: 1; max-width: none; margin: 0; padding: 30vh 0 40vh; }
+  .step { min-height: 90vh; padding-top: 0; }
+  .step-long { min-height: 170vh; }
+  .step-long .step-body { top: 20vh; }
+}
+
+/* On phones the 1000-unit drawing shrinks to about 40%, so figure labels grow to stay legible. */
+@media (max-width: 700px) {
+  .label, .label-strong, .label-num { font-size: 34px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step { opacity: 1; }
+}

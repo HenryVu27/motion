@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>View transitions</title>
+  <link rel="stylesheet" href="/shared/studio.css">
+  <style>
+    :root { --vt-dur: 420ms; }
+    :root.is-slow { --vt-dur: 2400ms; }
+
+    /* Both views share one grid cell, so the stage keeps the height of the taller one. */
+    .stage { aspect-ratio: auto; display: grid; font-family: var(--sans); }
+    .view { grid-area: 1 / 1; padding: 24px 0; }
+    .view[inert] { visibility: hidden; }
+    #detail-view { display: grid; align-items: center; }
+
+    .plates { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px 24px; }
+    .plate { width: 100%; display: grid; justify-items: center; gap: 8px; padding: 10px 0; background: none; border: 0; cursor: pointer;
+      font: inherit; color: var(--text-2); border-radius: 4px; }
+    .plate .shape { width: 96px; height: 96px; }
+    .plate .shape path { fill: var(--mark-strong); transition: fill var(--dur-fast) var(--ease-out); }
+    .plate:hover .shape path { fill: var(--mark-ink); }
+    .plate-title { display: block; width: fit-content; font-size: 14px; color: var(--ink); line-height: 1.2; }
+    .plate small { font-size: 12px; color: var(--muted); }
+
+    .detail { display: grid; grid-template-columns: 240px 1fr; gap: 32px; align-items: center; }
+    .detail .shape { width: 240px; height: 240px; }
+    .detail .shape path { fill: var(--mark-accent); }
+    .detail h3 { width: fit-content; margin: 0 0 8px; font-family: var(--sans); font-size: 30px; font-weight: 600; line-height: 1.2; }
+    .detail p { font-size: 15px; line-height: 1.55; color: var(--text-2); margin: 0 0 16px; max-width: 46ch; }
+    .detail .controls { margin: 0; }
+
+    @media (max-width: 560px) {
+      .plates { grid-template-columns: repeat(2, 1fr); }
+      .detail { grid-template-columns: 1fr; gap: 16px; justify-items: start; }
+      .detail .shape { width: 150px; height: 150px; }
+      .detail h3 { font-size: 24px; }
+    }
+
+    /* ---------- The transition: the browser snapshots old and new, these rules shape the in-between. ---------- */
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) { animation-duration: var(--vt-dur); }
+    ::view-transition-group(plate-shape),
+    ::view-transition-group(plate-title) { animation-timing-function: var(--ease-out); }
+    /* Text snapshots are images: scale them by height so a growing title never stretches. */
+    ::view-transition-old(plate-title),
+    ::view-transition-new(plate-title) { height: 100%; width: auto; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="runhead"><a href="../../">Motion Studio</a> / Drill 05</div>
+    <h1>View transitions</h1>
+    <p class="dek">Change the page in one step, and let the browser animate the difference. Elements that share a name fly from their old place to their new one.</p>
+
+    <figure class="wide">
+      <div class="fig-title">Six plates, one detail view <span id="support"></span></div>
+      <div class="stage" id="stage">
+        <div class="view" id="grid-view">
+          <ul class="plates" id="plates"></ul>
+        </div>
+        <div class="view" id="detail-view" inert>
+          <article class="detail" aria-live="polite">
+            <svg class="shape" viewBox="0 0 100 100" aria-hidden="true"><path id="detail-path"/></svg>
+            <div>
+              <h3 id="detail-title" tabindex="-1"></h3>
+              <p id="detail-text"></p>
+              <div class="controls"><button type="button" id="back">Back to all plates</button></div>
+            </div>
+          </article>
+        </div>
+      </div>
+      <div class="controls">
+        <button type="button" id="slow" aria-pressed="false">Slow motion</button>
+        <button type="button" id="vt-toggle" aria-pressed="true">View transition on</button>
+      </div>
+      <figcaption>Open a plate, then go back. The shape and its name travel and resize; everything else crossfades. Turn on Slow motion to watch the two snapshots, and turn the transition off to see the same state change as an instant swap.</figcaption>
+    </figure>
+
+    <section class="notes">
+      <h2>What this teaches</h2>
+      <ul>
+        <li><strong>Write the state change, not the animation.</strong> <code>document.startViewTransition(update)</code> snapshots the page, runs your plain DOM update, snapshots again, and animates between the two. Your update code stays the same with or without it.</li>
+        <li><strong>A shared <code>view-transition-name</code> is what makes an element travel.</strong> Give the old element and the new element the same name and the browser morphs position and size between them. Unnamed content just crossfades.</li>
+        <li><strong>Names must be unique at each snapshot.</strong> Name only the element that is about to move, just before the transition, and move the name across inside the update callback. Static names on a whole grid of items collide or animate everything.</li>
+        <li><strong>Snapshots are images.</strong> Text that changes size gets stretched unless you scale it by height and give the element a box that hugs its text (<code>width: fit-content</code>).</li>
+        <li><strong>Feature-detect and fall through.</strong> No API or reduced motion means the same update runs directly. Move focus yourself either way: to the detail heading on open, back to the plate on close.</li>
+      </ul>
+
+      <h2>The lines that matter</h2>
+<pre><code>function open(id) {
+  const tile = tiles[id];
+  name(tile, 'plate');                     // old state: the clicked tile owns the names
+  const vt = document.startViewTransition(() =&gt; {
+    name(tile, '');                        // a name may exist only once per snapshot
+    showDetail(id);                        // the ordinary DOM update
+    name(detail, 'plate');                 // new state: the detail takes them over
+  });
+  vt.finished.finally(() =&gt; name(detail, ''));
+}
+// name(el, base): el.shape.style.viewTransitionName = base &amp;&amp; base + '-shape', same for title
+
+::view-transition-group(plate-shape) { animation-timing-function: var(--ease-out); }
+::view-transition-new(plate-title)   { height: 100%; width: auto; }</code></pre>
+
+      <h2>Learned from</h2>
+      <p>The Chrome team's <a href="https://developer.chrome.com/docs/web-platform/view-transitions">View Transitions documentation</a>; Jhey Tompkins, <a href="https://jhey.dev">jhey.dev</a>, for small view-transition demos that show one idea at a time.</p>
+    </section>
+  </main>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

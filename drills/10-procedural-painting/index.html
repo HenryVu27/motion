@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Procedural Painting</title>
+  <link rel="stylesheet" href="/shared/studio.css">
+  <style>
+    .fig-title span { white-space: nowrap; font-variant-numeric: tabular-nums lining-nums; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="runhead"><a href="../../">Motion Studio</a> / Drill 10</div>
+    <h1>Procedural painting</h1>
+    <p class="dek">A landscape from a number. Noise draws the ridges, distance washes them toward the sky, and a brush paints them in from the back.</p>
+
+    <figure class="wide">
+      <div class="fig-title">Layered ridges with atmospheric perspective <span id="seed-note">seed</span></div>
+      <div class="stage" id="stage">
+        <canvas id="canvas" aria-label="A procedurally painted landscape of layered mountain ridges"></canvas>
+      </div>
+      <div class="controls">
+        <button id="new" type="button">New landscape</button>
+        <button id="repaint" type="button">Repaint</button>
+        <label>Haze <input id="haze" type="range" min="0" max="1" step="0.05" value="0.8"><output id="haze-out">0.80</output></label>
+      </div>
+      <figcaption>Watch the order: the farthest ridge starts first and every nearer one follows a beat later, so each layer is painted over the one behind it. Drag Haze to zero and every ridge takes the same color: the depth collapses into one flat silhouette.</figcaption>
+    </figure>
+
+    <section class="notes">
+      <h2>What this teaches</h2>
+      <ul>
+        <li><strong>A ridge is 1D noise.</strong> Sample noise along x, add two or three octaves at double frequency and half amplitude, and you have a skyline. Folding the noise (<code>1 - |n|</code>, ridged noise) gives sharp peaks for distant ranges; plain noise gives rounded foothills up close.</li>
+        <li><strong>Depth is mostly color.</strong> Atmospheric perspective: each layer is mixed toward the sky color by its distance, and farther ranges are lower, smoother and more compressed. Mix in a perceptual space (OKLab here) so the steps look even.</li>
+        <li><strong>Paint back to front, in time as well as order.</strong> The painter's algorithm says draw far things first. Staggered tweens with the same duration and easing keep the back layer's brush ahead of the front one at every column, and a column also waits until the layer behind it is down there, so nothing is ever painted under something nearer.</li>
+        <li><strong>Seed everything, and hash per stroke.</strong> One integer drives the noise, and each stroke gets its own generator seeded from a hash of seed, layer and column. A shared stream would hand out numbers in whatever order frames happen to paint columns; a hash makes the picture independent of frame rate, so a repaint after a resize or theme change matches and a landscape can be saved as a number.</li>
+        <li><strong>A timeline you drive yourself.</strong> The GSAP timeline is paused and advanced from our own frame loop, so it stops when the figure scrolls away and a finished painting costs nothing.</li>
+      </ul>
+
+      <h2>What gogh does</h2>
+      <p>Reading the source of <a href="https://github.com/ngokevin/gogh">gogh</a> (about 540 lines of jQuery-era JavaScript, last commit 2016) shows a different engine from this one. It uses no noise at all. Every element is a set of brush particles: each frame a particle stamps one circle and moves on, and because the canvas is never cleared, the path of the stamp becomes the stroke. A <code>shadowBlur</code> and <code>shadowOffset</code> on each stamp fakes the soft wet edge of a bristle.</p>
+      <p>The sky is about 66 particles running at 45 degrees on a rotated context, each at its own speed so stroke ends are ragged; the ground is 25 horizontal strokes. Each of one to four mountains is an isosceles triangle built from a row of particles that climb at the slope angle and stop at a line tracing the peak. Color comes from <code>fuzzColor</code>, which adds a random amount to the RGB channels every frame once a stroke passes a height: a random walk biased toward white that reads as sunset or snow. The tree is recursive: branches shrink about one percent a frame, split more often the farther they travel, and grow clipped-arc leaves after the second generation. Elements are drawn in groups (sky and ground, then each mountain, then the tree), and a group starts only when every particle in the one before has finished, which is the painter's algorithm played out in time.</p>
+      <p>Two small things in the code: the mountain loop calls <code>randInt(1, 4)</code> in its condition, so the bound is re-rolled every pass: two mountains come up most often and four only about one time in eleven, not one in four; and with plain <code>Math.random</code> there is no way to get a landscape back. This drill keeps gogh's best idea (strokes as the trace of a moving brush, revealed back to front) and swaps triangles for noise ridges, adds a seed, and draws the palette from the page tokens.</p>
+
+      <h2>The lines that matter</h2>
+<pre><code>// one ridge: fractal 1D noise, ridged far away, smooth up close
+for (let o = 0, f = freq, a = 1; o &lt; 3; o++, f *= 2, a *= 0.5) {
+  const n = noise2D(u * f, layerId);
+  h += a * lerp((1 - Math.abs(n)) ** 2, n * 0.5 + 0.5, nearness);
+}
+
+// atmospheric perspective: farther layers lean toward the sky token
+layer.color = mixOklab(near, token('--bg'), haze * (1 - nearness) * 0.85);
+
+// reveal: same duration, staggered starts, so the back always leads
+tl.to(layers, { progress: 1, duration: 2.2, ease: 'power1.inOut', stagger: 0.55 });</code></pre>
+
+      <h2>Learned from</h2>
+      <p>Kevin Ngo (<a href="https://x.com/kevopuff">@kevopuff</a>, co-creator of A-Frame), <a href="https://github.com/ngokevin/gogh">gogh</a> and its <a href="https://ngokevin.github.io/gogh/">demo</a>, for painting with moving brush particles and revealing a scene back to front. Octave sums (fractional Brownian motion) as explained by Inigo Quilez in <a href="https://iquilezles.org/articles/fbm/">fBM</a>.</p>
+    </section>
+  </main>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

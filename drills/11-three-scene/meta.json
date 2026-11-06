@@ -1,0 +1,7 @@
+{
+  "title": "A three.js scene",
+  "summary": "A low-poly temple in three.js with a renderer sized to its stage, render-on-demand, instanced columns and a camera tweened by GSAP between three stations.",
+  "skill": "3D scene and camera",
+  "library": ["three", "gsap"],
+  "learnedFrom": ["three.js manual", "Bruno Simon, Three.js Journey"]
+}

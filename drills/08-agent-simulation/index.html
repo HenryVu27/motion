@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent Simulation</title>
+  <link rel="stylesheet" href="/shared/studio.css">
+  <style>
+    @media (max-width: 640px) { #stage { aspect-ratio: 3 / 5; } }
+    .readout { font-family: var(--sans); font-size: 14px; color: var(--text-2); font-variant-numeric: tabular-nums lining-nums; }
+    .readout b { color: var(--ink); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="runhead"><a href="../../">Motion Studio</a> / Drill 08</div>
+    <h1>A playable model</h1>
+    <p class="dek">Give the reader the rule, not the conclusion. Twelve hundred agents with a mild preference sort themselves into a pattern none of them asked for.</p>
+
+    <figure class="wide">
+      <div class="fig-title">Schelling's checkerboard, 40 by 40 <span id="status">ready</span></div>
+      <div class="stage" id="stage"><canvas id="canvas" aria-label="Grid of two kinds of agents, squares and circles, with empty cells. Unhappy agents are highlighted. Beside it, a line chart of the average share of like neighbours over time."></canvas></div>
+      <div class="controls">
+        <button id="run" type="button" aria-pressed="false">Run</button>
+        <button id="reset" type="button">Reset</button>
+        <label>Wants <input id="threshold" type="range" min="0" max="90" step="1" value="33" aria-label="Minimum share of like neighbours"><output id="threshold-out">33%</output> alike</label>
+        <label>Speed <input id="speed" type="range" min="0" max="100" step="1" value="45"><output id="speed-out">120</output> moves/s</label>
+      </div>
+      <div class="controls" role="group" aria-label="Movement rule">
+        <span>An unhappy agent moves to</span>
+        <button type="button" data-rule="random" aria-pressed="true">a random empty cell</button>
+        <button type="button" data-rule="nearest" aria-pressed="false">the nearest cell that suits it</button>
+      </div>
+      <figcaption>Press Run. Each agent only asks that a third of its neighbours be like it, the dashed line. Watch the solid line: the share of like neighbours each agent actually ends up with climbs from about half to about three quarters. Highlighted agents are the unhappy ones about to move.</figcaption>
+    </figure>
+
+    <p class="readout" id="readout" aria-live="polite"></p>
+
+    <section class="notes">
+      <h2>What this teaches</h2>
+      <ul>
+        <li><strong>Separate the model from the drawing.</strong> The rules live in <code>model.js</code> with no canvas in sight, so the same code runs headless for a sweep of thresholds and seeds. The numbers in the caption came from that sweep, not from watching one run.</li>
+        <li><strong>Put the claim on the chart as two lines.</strong> The dashed line is what each agent asks for; the solid line is what they collectively get. The gap between them is the whole argument, and the reader sees it open up as they play.</li>
+        <li><strong>Let the reader break it.</strong> One slider for the individual rule and a Reset with a fresh shuffle. Try 20%, then 50%, then 75%; the reader learns the shape of the curve by poking, which is the Nicky Case move.</li>
+        <li><strong>Small details of the rule matter, so show them.</strong> With random moves, a 33% demand ends near 74% like neighbours; Schelling's own rule (move to the nearest square that suits you) ends near 65%. Both overshoot the demand, but by different amounts. Because an agent has at most eight neighbours, only certain fractions exist: 30% and 33% demand the same thing.</li>
+        <li><strong>Accent the cause, not the result.</strong> The highlight goes to unhappy agents, the ones about to move. When the highlights run out, the system has settled.</li>
+      </ul>
+
+      <h2>The lines that matter</h2>
+<pre><code>// The individual rule: content if at least `threshold` of my neighbours are my kind
+const content = (i, kind, threshold) => {
+  const [like, total] = count(i, kind);
+  return total === 0 || like / total >= threshold;
+};
+
+// Per frame: move as many unhappy agents as the speed allows, then measure
+const budget = (acc += dt * movesPerSecond) | 0;
+acc -= model.step(threshold, rule, budget).moves;
+history.push(model.segregation()); // mean share of like neighbours</code></pre>
+
+      <h2>Learned from</h2>
+      <p>Nicky Case and Vi Hart, <a href="https://ncase.me/polygons/">Parable of the Polygons</a> (2014), whose shapes move to random empty spots and want at least a third of their neighbours like them. The model is Thomas C. Schelling, "Dynamic Models of Segregation," <em>Journal of Mathematical Sociology</em> 1, no. 2 (1971): 143 to 186, <a href="https://doi.org/10.1080/0022250X.1971.9989794">doi:10.1080/0022250X.1971.9989794</a>. Schelling worked his checkerboard by hand with coins: eight surrounding squares as the neighbourhood, 25 to 30% of squares left vacant, and the discontented moving to the nearest square that satisfies them (pp. 154 to 155). He measured segregation as the average share of like neighbours (p. 156), the line drawn here. He also found that with demands near one third the segregation was slight and with one half it was striking (pp. 158 to 159); this board, with its random moves and larger size, overshoots more at one third.</p>
+    </section>
+  </main>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

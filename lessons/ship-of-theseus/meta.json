@@ -1,0 +1,7 @@
+{
+  "title": "The Ship of Theseus",
+  "summary": "Replace every plank, then rebuild the old ones into a second ship. Which one is the original? A scroll story built from drills 04 and 06.",
+  "skill": "lesson",
+  "library": ["SVG", "requestAnimationFrame"],
+  "learnedFrom": ["Plutarch, Theseus 23.1", "Hobbes, De Corpore II.11.7", "Plato, Phaedo 58a-c", "Xenophon, Memorabilia 4.8.2"]
+}

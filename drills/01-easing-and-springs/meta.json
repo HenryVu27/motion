@@ -1,0 +1,7 @@
+{
+  "title": "Easing and springs",
+  "summary": "Why ease-out feels responsive, ease-in feels late, and springs survive interruption. Web Animations API and Motion.",
+  "skill": "timing",
+  "library": ["Web Animations API", "motion"],
+  "learnedFrom": ["Emil Kowalski, animations.dev", "Josh Comeau, A friendly introduction to spring physics"]
+}

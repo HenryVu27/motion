@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>A Three.js Scene</title>
+  <link rel="stylesheet" href="/shared/studio.css">
+  <style>
+    .stage .fallback { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; font-family: var(--sans); font-size: 14px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="runhead"><a href="../../">Motion Studio</a> / Drill 11</div>
+    <h1>A three.js scene</h1>
+    <p class="dek">A small temple of boxes and cylinders, and a camera that walks between three viewpoints. The basics, done the way they hold up later.</p>
+
+    <figure class="wide">
+      <div class="fig-title">One camera, three stations <span id="station-note">Approach</span></div>
+      <div class="stage" id="stage">
+        <canvas aria-label="A low-poly Greek temple with a camera that moves between viewpoints"></canvas>
+      </div>
+      <div class="controls">
+        <button type="button" data-station="0" aria-pressed="true">Approach</button>
+        <button type="button" data-station="1" aria-pressed="false">Colonnade</button>
+        <button type="button" data-station="2" aria-pressed="false">Above</button>
+      </div>
+      <figcaption>The red dot is the point the camera looks at; it travels with the camera so the turn never snaps. Go from Colonnade to Above and watch the path bend upward to clear the roof before it crosses over.</figcaption>
+    </figure>
+
+    <section class="notes">
+      <h2>What this teaches</h2>
+      <ul>
+        <li><strong>Size to the box, not the window.</strong> A <code>ResizeObserver</code> on the stage calls <code>renderer.setSize(w, h, false)</code> and updates the camera's aspect and projection. The <code>false</code> leaves the canvas CSS alone so the page layout stays in charge. Cap <code>setPixelRatio</code> at 2: a 3x phone screen would cost 2.25 times the pixels for detail nobody sees.</li>
+        <li><strong>Resizing is not rebuilding.</strong> The renderer, geometries and materials are made once; a resize only changes the drawing buffer size and the projection. Disposal is for teardown: geometries, materials, render targets and the renderer each hold GPU memory that garbage collection cannot see, so free them when a figure is removed or hot reloaded.</li>
+        <li><strong>Move the target, not just the camera.</strong> Tween a <code>lookAt</code> point alongside the position with the same duration and call <code>camera.lookAt(target)</code> every frame. Tweening position alone makes the view swing around at the end. To make a straight path arc, give the height its own ease: leading on the way up, lagging on the way down.</li>
+        <li><strong>Render only what changed.</strong> The scene is static, so the loop draws only when a tween or a resize marks it dirty, and the shadow map is rendered once (<code>shadowMap.autoUpdate = false</code>). The loop itself stops when the figure leaves the screen.</li>
+        <li><strong>Draw calls, not triangles, are the budget.</strong> The 26 columns are one <code>InstancedMesh</code>: one geometry, one material, a matrix per copy, one draw call. Soft light is a hemisphere light for the sky and ground plus one shadow-casting sun with PCF filtering and a blur radius; fog set to the page color dissolves the horizon into the paper.</li>
+      </ul>
+
+      <h2>The lines that matter</h2>
+<pre><code>renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+new ResizeObserver(() => {
+  const { width, height } = stage.getBoundingClientRect();
+  renderer.setSize(width, height, false);
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+}).observe(stage);
+
+// position and look-at target travel together; height takes its own ease
+gsap.to(camera.position, { x, z, duration: 1.8, ease: 'power2.inOut', onUpdate: markDirty });
+gsap.to(camera.position, { y, duration: 1.8, ease: goingUp ? 'power3.out' : 'power3.in' });
+gsap.to(target, { ...look, duration: 1.8, ease: 'power2.inOut' });
+
+loop(() => { if (dirty) { camera.lookAt(target); renderer.render(scene, camera); } }, stage);</code></pre>
+
+      <h2>Learned from</h2>
+      <p>The <a href="https://threejs.org/manual/">three.js manual</a>, especially its pages on responsive design, rendering on demand and cleanup; Bruno Simon's <a href="https://threejs-journey.com">Three.js Journey</a>, for the habits of pixel ratio capping, shadow tuning and camera animation with GSAP.</p>
+    </section>
+  </main>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
