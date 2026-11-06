@@ -2,7 +2,7 @@
 // even, closed line; marks clipped to silhouettes). Right: marks and edges that describe form.
 // Light comes from the upper left throughout, and every choice below answers to it.
 import {
-  paper, inkLayer, inkLine, halftone, pathOf, circlePts, clamp, lerp, INK,
+  paper, inkLayer, inkLine, halftone, stipple, wash, noise2, pathOf, circlePts, rng, clamp, lerp, INK,
   flowStrokes, formOutline, lightBeams, construction,
 } from '../../film/kit.js';
 import {
@@ -17,6 +17,8 @@ const FORM = {
   edges: 'Lost and found edges',
   lens: 'Drop as a lens',
   shadow: 'Contact shadow',
+  depth: 'Bank and depth',
+  reflect: 'Reflections and glints',
   beams: 'Light beams',
   guides: 'Construction lines',
 };
@@ -49,25 +51,89 @@ function leafForm(ctx, angle, form) {
 
 // ---------- Pool ----------
 
-function poolForm(ctx, splash, form) {
+function poolForm(ctx, splash, form, drop, t) {
   const cx = 500, cy = POOL_Y + 70, rx = 460, ry = 90;
-  const pool = circlePts(cx, cy, 1, 72).map(([x, y]) => [cx + (x - cx) * rx, cy + (y - cy) * ry]);
+  const ell = (dy = 0, grow = 0) => circlePts(cx, cy, 1, 72).map(([x, y]) => [cx + (x - cx) * (rx + grow), cy + dy + (y - cy) * (ry + grow * 0.35)]);
+  const pool = ell();
+
+  if (form.depth) {
+    // The water sits below the ground. The bank is an uneven watercolor wash with no outline of its
+    // own: it fades into the paper, so only the water line is a found edge.
+    const n = noise2(19);
+    const bank = (grow) => ell(-2, grow).map(([x, y]) => { const a = Math.atan2((y - cy) / ry, (x - cx) / rx), k = 1 + 0.045 * n(Math.cos(a) * 1.5, Math.sin(a) * 1.5); return [cx + (x - cx) * k, cy + (y - cy) * k]; });
+    wash(ctx, bank(34), { color: '#c9a97c', seed: 12, layers: 16, alpha: 0.09, spread: 0.05 });
+    const ground = bank(80);
+    stipple(ctx, ground, { tone: (x, y) => 0.55 * clamp(1.25 - Math.hypot((x - cx) / (rx + 60), (y - cy) / (ry + 22)) * 1.2), count: 3200, r: 0.8, color: INK.sepia, seed: 13, alpha: 0.6 });
+    ctx.save(); pathOf(ctx, pool); ctx.clip(); ctx.drawImage(paper(ctx.canvas.width), 0, 0, 1000, 1000); ctx.restore();
+  }
+  // Fresnel: the far water reflects the pale sky, the near water lets you see down into the dark.
   inkLayer(ctx, (g) => halftone(g, pool, { tone: (x, y) => clamp(0.12 + (y - POOL_Y) / 230), cell: 9, angle: 0.4, color: INK.federal }), { grain: 0.35, seed: 4 });
+
+  if (form.depth) {
+    // The far bank seen across the water: a shaded wall between the rim and the water line.
+    ctx.save();
+    pathOf(ctx, pool); ctx.clip();
+    inkLayer(ctx, (g) => { g.fillStyle = '#6b5137'; g.beginPath(); for (const P of [pool, ell(14)]) { P.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); } g.fill('evenodd'); }, { grain: 0.5, seed: 15 });
+    ctx.restore();
+    // Pebbles under the shallow near edge, softened and tinted by the water over them.
+    const R = rng(77);
+    for (let i = 0; i < 16; i++) {
+      const a = Math.PI * (0.12 + R() * 0.76), d = 0.55 + R() * 0.38;
+      const px = cx + Math.cos(a) * rx * d, py = cy + Math.sin(a) * ry * d, pr = 6 + R() * 10;
+      const tilt = R() * 0.4 - 0.2;
+      inkLayer(ctx, (g) => { g.fillStyle = '#b3a183'; g.globalAlpha = 0.32; g.beginPath(); g.ellipse(px, py, pr, pr * 0.45, tilt, 0, Math.PI * 2); g.fill(); }, { grain: 0.4, seed: 16 });
+      inkLine(ctx, circlePts(px, py, 1, 24).map(([x, y]) => [px + (x - px) * pr, py + (y - py) * pr * 0.45]), { width: 0.7, color: INK.federal, alpha: 0.3, seed: 90 + i, passes: 1, taper: false });
+    }
+  }
   if (form.contour) {
     // Strokes follow the ellipse, so the surface reads as a flat plane in perspective.
     // Tangent to the ellipse through (x, y): perpendicular to the gradient (x / rx^2, y / ry^2).
     const dir = (x, y) => Math.atan2((x - cx) / (rx * rx), -(y - cy) / (ry * ry));
     flowStrokes(ctx, pool, { dir, tone: (x, y) => 0.25 + 0.35 * clamp((y - cy) / ry + 0.5), spacing: 9, length: 46, color: INK.federal, width: 0.8, seed: 41, alpha: 0.55 });
   }
+  if (form.reflect) {
+    ctx.save();
+    pathOf(ctx, pool); ctx.clip();
+    // The falling drop meets its own reflection: mirrored about the water line, foreshortened, wobbling.
+    if (drop.visible && drop.y < POOL_Y) {
+      const m = { ...drop, x: drop.x + Math.sin(t * 9) * 2, y: POOL_Y + (POOL_Y - drop.y) * 0.55 + 4, stretch: drop.stretch * 0.75 };
+      const P = dropPath(m);
+      inkLayer(ctx, (g) => { g.fillStyle = '#9fc0d8'; pathOf(g, P); g.fill(); }, { grain: 0.4, seed: 17, alpha: 0.35 });
+      ctx.fillStyle = 'rgba(255,252,236,0.7)';
+      ctx.beginPath(); ctx.ellipse(m.x - m.r * 0.3, m.y + m.r * 0.2, m.r * 0.18, m.r * 0.1, 0.5, 0, Math.PI * 2); ctx.fill();
+      inkLine(ctx, [...P, P[0]], { width: 1.1, color: INK.federal, seed: 18, alpha: 0.4, taper: false, passes: 1 });
+    }
+    // Glints: light catching the ripples. Re-rolled every drawing, so the water twinkles.
+    const G = rng(500 + Math.floor(t * FPS_DRAW));
+    ctx.strokeStyle = 'rgba(255,252,236,0.95)';
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 46; i++) {
+      const a = R2(G), d = Math.sqrt(G());
+      const gx = cx + Math.cos(a) * rx * d, gy = cy + Math.sin(a) * ry * d;
+      if (G() > 0.35 + 0.5 * clamp((cy - gy) / ry + 0.5)) continue;   // more glints on the far, sky-lit water
+      const L = 3 + G() * 9;
+      ctx.lineWidth = 1 + G() * 1.4;
+      ctx.beginPath(); ctx.moveTo(gx - L, gy); ctx.lineTo(gx + L, gy); ctx.stroke();
+    }
+    ctx.restore();
+  }
   if (form.edges) formOutline(ctx, pool, { light: LIGHT, width: 2, color: INK.federal, seed: 30, lost: 0.35, alpha: 0.8 });
   else inkLine(ctx, [...pool, pool[0]], { width: 1.2, color: INK.federal, seed: 30, alpha: 0.7, taper: false });
   if (!splash) return;
   for (const ring of splash.rings) {
     const pts = circlePts(TIP[0], POOL_Y, 1, 64).map(([x, y]) => [TIP[0] + (x - TIP[0]) * ring.r, POOL_Y + (y - POOL_Y) * ring.r * 0.22]);
-    inkLine(ctx, pts, { width: 1.4, color: INK.federal, seed: 31, alpha: 0.85 * ring.alpha, taper: false });
+    if (form.reflect) {
+      // A ripple is a wave, not a line: a lit crest with a dark trough just in front of it.
+      inkLine(ctx, pts.map(([x, y]) => [x, y + 2]), { width: 1.8, color: INK.federal, seed: 31, alpha: 0.9 * ring.alpha, taper: false, passes: 1 });
+      ctx.save(); ctx.globalAlpha = ring.alpha; ctx.strokeStyle = 'rgba(255,252,236,0.95)'; ctx.lineWidth = 1.6;
+      pathOf(ctx, pts.map(([x, y]) => [x, y - 1.5]), false); ctx.stroke(); ctx.restore();
+    } else {
+      inkLine(ctx, pts, { width: 1.4, color: INK.federal, seed: 31, alpha: 0.85 * ring.alpha, taper: false });
+    }
   }
   for (const d of splash.drops) if (d.alive) dropForm(ctx, { x: d.x, y: d.y, r: d.r, stretch: 1.2, neck: 0, visible: true }, { ...form, lens: false }, 0);
 }
+const R2 = (G) => G() * Math.PI * 2;
 
 // The shadow a falling drop throws on the water: wide and faint when high, small and dark as it lands.
 function contactShadow(ctx, d) {
@@ -141,7 +207,7 @@ function drawForm(canvas, T, form) {
     if (drop.visible) construction(ctx, [drop.x + LIGHT[0] * 150, drop.y + LIGHT[1] * 150], [drop.x - LIGHT[0] * 150, drop.y - LIGHT[1] * 150], { extend: 0, seed: 73, alpha: 0.35 });
   }
   leafForm(ctx, angle, form);
-  poolForm(ctx, splashAt(t), form);
+  poolForm(ctx, splashAt(t), form, drop, t);
   if (form.shadow) contactShadow(ctx, drop);
   dropForm(ctx, drop, form, angle);
   if (form.beams) lightBeams(ctx, { angle: -0.64, bands: [[-280, 220], [-20, 110], [230, 260]], color: 'rgba(255,236,190,0.28)' });
