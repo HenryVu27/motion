@@ -11,7 +11,7 @@ import { defineFilm } from '../../film/engine.js';
 
 const ROWS = 3, COLS = 8, N = ROWS * COLS, EDGE = 5;
 
-function hull({ cx, wl, W, D }) {
+export function hull({ cx, wl, W, D }) {
   return (u, v) => {
     const e = Math.abs(2 * u - 1);
     const deck = wl - 0.62 * D - 0.5 * D * e ** 3 - (u > 0.5 ? 0.22 * D * ((u - 0.5) * 2) ** 4 : 0);
@@ -59,23 +59,27 @@ function drawPlank(ctx, poly, { kind = 'old', rot = 0, seed = 1, outline = 1, fi
 
 // The whole ship. `plank(i)` returns that plank's state (or null to skip it); `oars` is the stroke
 // phase; `rig` fades the mast and sail in.
-function drawGalley(ctx, spec, { plank = () => ({ kind: 'old' }), oars = null, rig = 1, seed = 1, shade = true, eye = true, interior = false }) {
+// `oarAngle(i)` overrides the default oar swing; `sail` bends the canvas (lag: radians the sail trails
+// the mast, belly: how far the lower edge billows).
+export function drawGalley(ctx, spec, { plank = () => ({ kind: 'old' }), oars = null, oarAngle = null, rig = 1, seed = 1, shade = true, eye = true, interior = false, sail: cloth = { lag: 0, belly: 0 } }) {
   const H = hull(spec), { W, D, wl } = spec;
   const [mx, my] = H(0.5, 0);
 
   if (rig > 0) {
     ctx.save();
     ctx.globalAlpha = rig;
-    const sail = [[mx - W * 0.27, wl - D * 2.45], [mx + W * 0.27, wl - D * 2.45], [mx + W * 0.24, wl - D * 1.2], [mx - W * 0.24, wl - D * 1.2]];
+    // The sail hangs from the yard; lag swings it about the yard, belly bows its lower edge.
+    const yardY = wl - D * 2.45, dropY = wl - D * 1.2, sw = Math.sin(cloth.lag) * D * 1.25;
+    const sail = [[mx - W * 0.27, yardY], [mx + W * 0.27, yardY], [mx + W * 0.24 + sw, dropY], [mx + sw + cloth.belly * 0.4, dropY + cloth.belly], [mx - W * 0.24 + sw, dropY]];
     wash(ctx, sail, { color: '#efe0c2', seed: seed + 3, layers: 10, alpha: 0.18, spread: 0.04 });
     inkLayer(ctx, (g) => {
       g.fillStyle = INK.red;
       for (const [a, b] of [[0.18, 0.3], [0.52, 0.64]]) {
         g.beginPath();
-        g.moveTo(lerp(sail[0][0], sail[3][0], a), lerp(sail[0][1], sail[3][1], a));
+        g.moveTo(lerp(sail[0][0], sail[4][0], a), lerp(sail[0][1], sail[4][1], a));
         g.lineTo(lerp(sail[1][0], sail[2][0], a), lerp(sail[1][1], sail[2][1], a));
         g.lineTo(lerp(sail[1][0], sail[2][0], b), lerp(sail[1][1], sail[2][1], b));
-        g.lineTo(lerp(sail[0][0], sail[3][0], b), lerp(sail[0][1], sail[3][1], b));
+        g.lineTo(lerp(sail[0][0], sail[4][0], b), lerp(sail[0][1], sail[4][1], b));
         g.fill();
       }
     }, { grain: 0.55, offset: [2.5, -1.5], seed: 6 });
@@ -91,9 +95,9 @@ function drawGalley(ctx, spec, { plank = () => ({ kind: 'old' }), oars = null, r
     for (let i = 0; i < 15; i++) {
       const u = 0.16 + (i * 0.68) / 14;
       const [ox, oy] = H(u, 0.3);
-      const a = 2.0 + Math.sin(oars * Math.PI * 2 - i * 0.12) * 0.22;
-      const L = D * 1.05;
-      inkLine(ctx, [[ox, oy], [ox + Math.cos(a) * L, oy + Math.sin(a) * L]], { width: 1.6, seed: seed + 20 + i, wobble: 0.6 });
+      const o = oarAngle ? oarAngle(i) : { a: 2.0 + Math.sin(oars * Math.PI * 2 - i * 0.12) * 0.22, reach: 1 };
+      const L = D * 1.05 * (o.reach ?? 1);
+      inkLine(ctx, [[ox, oy], [ox + Math.cos(o.a) * L, oy + Math.sin(o.a) * L]], { width: 1.6, seed: seed + 20 + i, wobble: 0.6 });
     }
   }
 
@@ -151,7 +155,7 @@ function waterFront(ctx, y0, t, { x1 = 1000, depth = 90 } = {}) {
   ctx.restore();
 }
 
-function sun(ctx, x, y, r, { seed = 3 } = {}) {
+export function sun(ctx, x, y, r, { seed = 3 } = {}) {
   inkLayer(ctx, (g) => halftone(g, circlePts(x, y, r * 2.2), { tone: (px, py) => clamp(1 - Math.hypot(px - x, py - y) / (r * 2.2)) * 0.5, cell: 8, angle: 0.2, color: INK.orange }), { grain: 0.4, seed: 7 });
   inkLayer(ctx, (g) => { g.fillStyle = INK.yellow; pathOf(g, circlePts(x, y, r)); g.fill(); }, { grain: 0.5, seed: 8 });
   inkLayer(ctx, (g) => { g.strokeStyle = INK.red; g.lineWidth = 5; pathOf(g, circlePts(x, y, r)); g.stroke(); }, { grain: 0.45, offset: [4, 3], seed: 9 });

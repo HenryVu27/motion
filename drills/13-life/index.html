@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rigid Versus Alive</title>
+  <link rel="stylesheet" href="/shared/studio.css">
+  <style>
+    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .pair figure { margin: 0; }
+    .pair canvas { display: block; width: 100%; aspect-ratio: 1; border-bottom: 1px solid var(--rule); }
+    .pair .fig-title { margin-bottom: 6px; }
+    @media (max-width: 640px) { .pair { grid-template-columns: 1fr; } }
+    .measure { font-family: var(--sans); font-size: 14px; border-collapse: collapse; width: 100%; margin: 1em 0; font-variant-numeric: tabular-nums lining-nums; }
+    .measure th, .measure td { text-align: left; padding: 6px 10px 6px 0; vertical-align: top; }
+    .measure thead th { border-top: 1px solid var(--ink); border-bottom: 1px solid var(--rule); font-weight: 600; color: var(--ink); }
+    .measure tbody tr:last-child td { border-bottom: 1px solid var(--ink); }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="runhead"><a href="../../">Motion Studio</a> / Drill 13</div>
+    <h1>Rigid versus alive</h1>
+    <p class="dek">The same drawing of the same ship. The left one moves like a sticker sliding over paper. The right one moves like something drawn.</p>
+
+    <div class="wide">
+      <div class="pair">
+        <figure><div class="fig-title">Rigid <span>how the first film moved</span></div><canvas id="rigid" aria-label="Rigid ship"></canvas></figure>
+        <figure><div class="fig-title">Alive <span>12 drawings a second</span></div><canvas id="alive" aria-label="Alive ship"></canvas></figure>
+      </div>
+      <div class="controls" id="principles" aria-label="Principles on the right-hand ship"></div>
+      <figcaption>Each switch turns one principle off on the right-hand ship. Turn them off one at a time and watch which loss you notice first. Line boil and on twos change the texture of time; the other four change the physics.</figcaption>
+    </div>
+
+    <section class="notes">
+      <h2>Why the first film felt dead</h2>
+      <p>I measured Kevin T. Ngo's <a href="https://kevintngo.com/work/dew/">dew</a> frame by frame (pixels that change between consecutive frames of the 24 fps video):</p>
+      <table class="measure">
+        <thead><tr><th>Measured in dew</th><th>What it means</th><th>The first film</th></tr></thead>
+        <tbody>
+          <tr><td>Frames alternate: 0% changed, then 30 to 85% changed</td><td>A new drawing every second frame: 12 drawings a second, "on twos"</td><td>A new frame 30 times a second, perfectly smooth, which reads as a computer</td></tr>
+          <tr><td>A static corner of background still changes 4 to 12% on every drawing</td><td>Everything is redrawn each time, so lines and grain boil slightly</td><td>Seeded so nothing changes: textures sit frozen while shapes slide over them</td></tr>
+          <tr><td>The camera follows the fly, turning and travelling between drawings</td><td>The viewpoint is alive too</td><td>Locked camera, one slow linear zoom</td></tr>
+        </tbody>
+      </table>
+      <p>On top of that, the first film broke most of Thomas and Johnston's principles from <i>The Illusion of Life</i>: things moved in straight lines with one easing curve, every stagger was evenly spaced, nothing anticipated, overshot or trailed, and rigid shapes slid instead of bending.</p>
+
+      <h2>What each switch is</h2>
+      <ul>
+        <li><strong>On twos.</strong> Time is quantized to 12 drawings a second. Each drawing is held, so motion has a slight stutter that the eye reads as hand-made. Smoothness is not the goal; character is.</li>
+        <li><strong>Line boil.</strong> Every seeded wobble, grain and halftone jitter re-rolls on each drawing, and the paper itself shifts a pixel. Even a still ship breathes.</li>
+        <li><strong>Rides the waves.</strong> One wave function draws the sea lines and also lifts and tilts the ship (heave and pitch), so cause and effect agree. A sine bob unconnected to the water is the sticker problem.</li>
+        <li><strong>Follow-through.</strong> The sail trails the hull's pitch by a third of a second and billows; the pennant's segments each follow the one before, late. Loose things lag; that lag is what says "cloth".</li>
+        <li><strong>Oar timing.</strong> A real stroke is a quick pull with the blade in the water and a slow, lifted recovery, plus a splash at the catch. Symmetric sine swinging is a metronome.</li>
+        <li><strong>Camera breath.</strong> A few pixels of slow drift, turn and zoom from noise. Nobody notices it until it stops.</li>
+      </ul>
+
+      <h2>The lines that matter</h2>
+<pre><code>// On twos: hold each drawing for two frames of 24 (one of 12)
+const t = Math.floor(T * 12) / 12;
+setBoil(Math.floor(T * 12));            // re-roll every wobble per drawing
+
+// One cause for both: the sea lines and the ship come from the same wave
+ctx.translate(cx, wl + heave(t)); ctx.rotate(pitch(t));
+
+// Follow-through: the sail answers the hull a third of a second late
+sail.lag = (pitch(t - 0.35) - pitch(t)) * 2.4;</code></pre>
+
+      <h2>Learned from</h2>
+      <p>Frame analysis of Kevin T. Ngo's <a href="https://kevintngo.com/work/dew/">dew</a>. Frank Thomas and Ollie Johnston, <i>The Illusion of Life: Disney Animation</i> (1981), the twelve principles. Richard Williams, <i>The Animator's Survival Kit</i>, on timing, holds and working on twos.</p>
+    </section>
+  </main>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

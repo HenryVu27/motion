@@ -20,6 +20,12 @@ export function rng(seed = 1) {
   return r;
 }
 export const hash = (...ns) => ns.reduce((h, n) => Math.imul(h ^ Math.round(n * 1000), 2654435761) >>> 0, 2166136261);
+// Boil: hand-drawn animation redraws every line on every drawing, so nothing is ever perfectly
+// still. Setting a boil index re-rolls every seeded wobble, grain and jitter for this drawing.
+let BOIL = 0;
+export const setBoil = (n) => { BOIL = n | 0; };
+const boiled = (seed, k = 101) => seed + BOIL * k;
+
 const noiseCache = new Map();
 export const noise2 = (seed) => {
   if (!noiseCache.has(seed)) noiseCache.set(seed, createNoise2D(rng(seed)));
@@ -143,7 +149,7 @@ export function inkLayer(ctx, fn, { grain = 0.6, offset = [0, 0], blend = 'multi
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.globalCompositeOperation = 'destination-out';
     g.globalAlpha = grain;
-    g.drawImage(speckle(width, seed), 0, 0);
+    g.drawImage(speckle(width, seed + (BOIL % 4) * 1000), 0, 0);
     g.globalAlpha = 1;
     g.globalCompositeOperation = 'source-over';
   }
@@ -162,7 +168,7 @@ export function inkLayer(ctx, fn, { grain = 0.6, offset = [0, 0], blend = 'multi
 // slightly different passes. `progress` draws it on from the start (0 to 1).
 export function inkLine(ctx, pts, { width = 2.2, wobble = 1.2, color = INK.ink, seed = 1, progress = 1, taper = true, passes = 2, alpha = 0.92 } = {}) {
   const P = resample(pts, 3);
-  const n = noise2(seed);
+  const n = noise2(boiled(seed));
   const end = Math.max(2, Math.floor(P.length * clamp(progress)));
   ctx.save();
   ctx.lineCap = 'round';
@@ -199,7 +205,7 @@ export function circlePts(cx, cy, r, n = 64) {
 // direction appears above `levels[0]`, cross-hatching above `levels[1]`, and so on.
 export function hatch(ctx, clip, { angle = -0.8, spacing = 6, tone = () => 0.6, levels = [0.2, 0.55, 0.8], color = INK.ink, width = 0.9, seed = 3, alpha = 0.7, progress = 1 } = {}) {
   const b = bbox(clip);
-  const n = noise2(seed);
+  const n = noise2(boiled(seed, 31));
   ctx.save();
   pathOf(ctx, clip);
   ctx.clip();
@@ -229,7 +235,7 @@ export function hatch(ctx, clip, { angle = -0.8, spacing = 6, tone = () => 0.6, 
 
 // Stippling: dots accepted with probability tone(x, y).
 export function stipple(ctx, clip, { tone = () => 0.5, count = 1500, r = 0.9, color = INK.ink, seed = 4, alpha = 0.85 } = {}) {
-  const b = bbox(clip), R = rng(seed);
+  const b = bbox(clip), R = rng(boiled(seed, 17));
   ctx.save();
   pathOf(ctx, clip);
   ctx.clip();
@@ -257,7 +263,8 @@ export function halftone(ctx, clip, { tone = () => 0.5, cell = 7, angle = 0.26, 
   const ca = Math.cos(angle), sa = Math.sin(angle), cx = b.x0 + b.w / 2, cy = b.y0 + b.h / 2;
   const R = Math.hypot(b.w, b.h) / 2 + cell;
   for (let i = -R; i <= R; i += cell) for (let j = -R; j <= R; j += cell) {
-    const x = cx + ca * (i + phase[0]) - sa * (j + phase[1]), y = cy + sa * (i + phase[0]) + ca * (j + phase[1]);
+    const jx = BOIL ? (((i * 7 + j * 13 + BOIL * 29) % 11) / 11 - 0.5) * cell * 0.12 : 0;
+    const x = cx + ca * (i + phase[0]) - sa * (j + phase[1]) + jx, y = cy + sa * (i + phase[0]) + ca * (j + phase[1]) - jx;
     const v = clamp(tone(x, y));
     if (v < 0.03) continue;
     const r = Math.sqrt(v) * cell * 0.62;
@@ -286,7 +293,7 @@ function deform(pts, depth, variance, R) {
   return P;
 }
 export function wash(ctx, poly, { color = INK.ochre, seed = 9, layers = 18, alpha = 0.07, spread = 0.18 } = {}) {
-  const R = rng(seed);
+  const R = rng(boiled(seed, 7));
   const base = deform(poly, 2, spread, R);
   ctx.save();
   ctx.fillStyle = color;
