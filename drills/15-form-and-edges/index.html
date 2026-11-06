@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Form and Edges</title>
+  <link rel="stylesheet" href="/shared/studio.css">
+  <style>
+    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .pair figure { margin: 0; }
+    .pair canvas { display: block; width: 100%; aspect-ratio: 1; border-bottom: 1px solid var(--rule); }
+    .pair .fig-title { margin-bottom: 6px; }
+    @media (max-width: 640px) { .pair { grid-template-columns: 1fr; } }
+    .measure { font-family: var(--sans); font-size: 14px; border-collapse: collapse; width: 100%; margin: 1em 0; font-variant-numeric: tabular-nums lining-nums; }
+    .measure th, .measure td { text-align: left; padding: 6px 10px 6px 0; vertical-align: top; }
+    .measure thead th { border-top: 1px solid var(--ink); border-bottom: 1px solid var(--rule); font-weight: 600; color: var(--ink); }
+    .measure tbody tr:last-child td { border-bottom: 1px solid var(--ink); }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="runhead"><a href="../../">Motion Studio</a> / Drill 15</div>
+    <h1>Form and edges</h1>
+    <p class="dek">The motion from drill 14, unchanged. Only the drawing is different: the left is outlines filled in, the right is drawn as things with volume, standing in light.</p>
+
+    <div class="wide">
+      <div class="pair">
+        <figure><div class="fig-title">Flat <span>closed outlines, clipped marks</span></div><canvas id="flat" aria-label="Flat drawing"></canvas></figure>
+        <figure><div class="fig-title">Form <span>light from the upper left</span></div><canvas id="form" aria-label="Drawing with form"></canvas></figure>
+      </div>
+      <div class="controls" id="form-toggles" aria-label="Drawing techniques on the right"></div>
+      <div class="controls">
+        <label>Speed <input id="speed" type="range" min="0.1" max="1" step="0.05" value="1"><output id="speed-out">1x</output></label>
+      </div>
+      <figcaption>Turn the switches off one at a time. Lost and found edges and the lens do the most for the drop; cross-contour strokes do the most for the leaf; the contact shadow is what ties the falling drop to the water.</figcaption>
+    </div>
+
+    <section class="notes">
+      <h2>Why the first drawings looked flat</h2>
+      <p>Every shape was a silhouette: one even outline, closed all the way round, filled with one ink, with straight parallel hatching clipped to its edge. That is how a cut-out looks. Close reading of Kevin T. Ngo&rsquo;s <a href="https://kevintngo.com/work/dew/">dew</a> (the dewdrop on the leaf at 25 s, the orange and the fly at the start) shows the opposite in every case: marks wrap around forms, outlines change weight and break, and the drop shows the room inside it.</p>
+
+      <h2>What each switch is</h2>
+      <ul>
+        <li><strong>Cross-contour strokes.</strong> Marks follow the surface instead of a ruler: along the veins of the leaf, around the ellipse of the pool. A stroke that bends with the form tells the eye the form bends. In dew, the orange carries meridian lines and short strokes that wrap around it.</li>
+        <li><strong>Lost and found edges.</strong> Where a surface turns toward the light the outline thins and breaks; where it turns away the line thickens. One rule, light from the upper left, decides every edge in the picture, so the shapes agree about where the light is.</li>
+        <li><strong>Drop as a lens.</strong> A transparent thing is drawn by what it does to what is behind it. The drop shows the pool at its top and the leaf at its bottom, upside down, darkens at its thick rim, and gathers light on the side away from the sun. Volume comes from optics, not from shading.</li>
+        <li><strong>Contact shadow.</strong> The falling drop throws a shadow on the water that tightens and darkens as it nears. Without it a falling thing floats in front of the background instead of moving through the space.</li>
+        <li><strong>Light beams.</strong> Pale diagonal bands, lightening whatever they cross. Light becomes a layer that every object sits inside, which flattens nothing and unifies everything.</li>
+        <li><strong>Construction lines.</strong> Thin blue guides left in: the drop&rsquo;s path, the water line, the direction of the light. They make the picture feel drawn and measured, as in dew, where drafting lines run straight through the drop.</li>
+      </ul>
+
+      <h2>The lines that matter</h2>
+<pre><code>// Edge weight from the light: thick where the surface turns away, gone where it faces it
+const lit = normal.x * light.x + normal.y * light.y;
+if (lit &gt; lost) skip(); else width = base * (0.35 + (0.55 - lit) * 0.9);
+
+// Cross-contour: short streamlines along a direction field instead of clipped parallel lines
+flowStrokes(ctx, leaf, { dir: (x, y) =&gt; axis + side(x, y) * 0.55, tone });
+
+// Lens: draw the world again inside the drop, scaled and turned upside down
+ctx.clip(drop); ctx.scale(-k, -k); drawPool(); drawLeaf();</code></pre>
+
+      <h2>Learned from</h2>
+      <p>Frames of Kevin T. Ngo&rsquo;s <a href="https://kevintngo.com/work/dew/">dew</a>, read up close. Cross-contour line, lost and found edges and cast shadows are long-standing drawing practice; this page is a code version of them.</p>
+    </section>
+  </main>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

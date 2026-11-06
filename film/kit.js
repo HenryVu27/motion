@@ -324,3 +324,94 @@ export function caption(ctx, text, x, y, { size = 34, color = INK.ink, alpha = 1
   lines.forEach((l, i) => ctx.fillText(l, x, y + (i - (lines.length - 1)) * size * lineHeight));
   ctx.restore();
 }
+
+// ---------- Form: marks that describe volume instead of filling a silhouette ----------
+
+// Cross-contour strokes: short streamlines that follow a direction field, so marks wrap around
+// a form (along a leaf's veins, around a sphere's latitudes). `dir(x, y)` returns an angle;
+// `tone(x, y)` in [0, 1] is the chance a stroke starts there, so density carries the shading.
+export function flowStrokes(ctx, clip, { dir, tone = () => 0.5, spacing = 7, length = 28, color = INK.ink, width = 0.8, seed = 12, alpha = 0.6 } = {}) {
+  const b = bbox(clip), R = rng(boiled(seed, 13));
+  ctx.save();
+  pathOf(ctx, clip);
+  ctx.clip();
+  ctx.strokeStyle = color;
+  ctx.lineCap = 'round';
+  for (let y = b.y0; y < b.y1; y += spacing) for (let x = b.x0; x < b.x1; x += spacing) {
+    const px = x + (R() - 0.5) * spacing, py = y + (R() - 0.5) * spacing;
+    if (R() > tone(px, py)) continue;
+    const L = length * (0.6 + R() * 0.7);
+    ctx.globalAlpha = alpha * (0.6 + R() * 0.4);
+    ctx.lineWidth = width * (0.7 + R() * 0.6);
+    ctx.beginPath();
+    let cx = px, cy = py;
+    ctx.moveTo(cx, cy);
+    for (let s = 0; s < L; s += 3) {
+      const a = dir(cx, cy);
+      cx += Math.cos(a) * 3; cy += Math.sin(a) * 3;
+      ctx.lineTo(cx, cy);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// Lost and found edges: a closed outline whose weight follows the light. Edges facing the light
+// thin out and break; edges turned away from it thicken. Drawn as a few loose passes, not one
+// perfect contour. `light` points toward the light source.
+export function formOutline(ctx, pts, { light = [-0.6, -0.8], width = 2.4, color = INK.ink, seed = 5, lost = 0.55, passes = 2, alpha = 0.95 } = {}) {
+  const P = resample([...pts, pts[0]], 3);
+  const n = noise2(boiled(seed));
+  let cx = 0, cy = 0;
+  for (const [x, y] of P) { cx += x; cy += y; }
+  cx /= P.length; cy /= P.length;
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineCap = 'round';
+  for (let pass = 0; pass < passes; pass++) {
+    const shift = pass * 0.9;
+    for (let i = 1; i < P.length; i++) {
+      const [ax, ay] = P[i - 1], [bx, by] = P[i];
+      let nx = by - ay, ny = -(bx - ax);
+      const nl = Math.hypot(nx, ny) || 1;
+      nx /= nl; ny /= nl;
+      if (nx * (ax - cx) + ny * (ay - cy) < 0) { nx = -nx; ny = -ny; }   // outward normal
+      const lit = nx * light[0] + ny * light[1];                          // 1 faces the light
+      const breakup = n(i * 0.06, pass * 7);
+      if (lit > lost && breakup > -0.1) continue;                         // lost edge
+      const w = width * clamp(0.35 + (0.55 - lit) * 0.9, 0.25, 1.6) * (pass ? 0.55 : 1);
+      ctx.globalAlpha = alpha * (pass ? 0.5 : 1);
+      ctx.lineWidth = w;
+      const j = n(i * 0.04, pass * 3 + 1) * 1.2 + shift;
+      ctx.beginPath();
+      ctx.moveTo(ax + nx * j, ay + ny * j);
+      ctx.lineTo(bx + nx * j, by + ny * j);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+// Light as a layer: soft diagonal beams that lighten whatever they cross.
+export function lightBeams(ctx, { angle = 0.9, bands = [[-120, 90], [140, 50], [330, 120]], color = 'rgba(255,246,214,0.55)' } = {}) {
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  ctx.translate(500, 500);
+  ctx.rotate(angle);
+  for (const [offset, w] of bands) {
+    const g = ctx.createLinearGradient(offset - w / 2, 0, offset + w / 2, 0);
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(0.5, color);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(offset - w / 2, -900, w, 1800);
+  }
+  ctx.restore();
+}
+
+// Drafting guides left in the drawing: thin straight lines that run past the things they measure.
+export function construction(ctx, a, b, { extend = 60, color = INK.blue, alpha = 0.45, width = 0.8, seed = 9 } = {}) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1;
+  const ux = dx / l, uy = dy / l;
+  inkLine(ctx, [[a[0] - ux * extend, a[1] - uy * extend], [b[0] + ux * extend, b[1] + uy * extend]], { width, color, alpha, wobble: 0.3, taper: false, passes: 1, seed });
+}
