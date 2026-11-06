@@ -126,13 +126,14 @@ function draw(canvas, T, on) {
 
 const rigid = document.getElementById('rigid'), alive = document.getElementById('alive');
 for (const c of [rigid, alive]) { c.width = SIZE; c.height = SIZE; }
-const on = Object.fromEntries(Object.keys(PRINCIPLES).map((key) => [key, true]));
+// Boil starts off: measured, dew holds still regions perfectly still between drawings.
+const on = Object.fromEntries(Object.keys(PRINCIPLES).map((key) => [key, key !== 'boil']));
 const RIGID = Object.fromEntries(Object.keys(PRINCIPLES).map((key) => [key, false]));
 
 const panel = document.getElementById('principles');
 for (const [key, label] of Object.entries(PRINCIPLES)) {
   const b = Object.assign(document.createElement('button'), { type: 'button', textContent: label });
-  b.setAttribute('aria-pressed', 'true');
+  b.setAttribute('aria-pressed', String(on[key]));
   b.addEventListener('click', () => { on[key] = !on[key]; b.setAttribute('aria-pressed', String(on[key])); last = -1; });
   panel.append(b);
 }

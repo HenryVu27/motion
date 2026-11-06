@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Timing and Spacing</title>
+  <link rel="stylesheet" href="/shared/studio.css">
+  <style>
+    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .pair figure { margin: 0; }
+    .pair canvas { display: block; width: 100%; aspect-ratio: 1; border-bottom: 1px solid var(--rule); }
+    .pair .fig-title { margin-bottom: 6px; }
+    @media (max-width: 640px) { .pair { grid-template-columns: 1fr; } }
+    .measure { font-family: var(--sans); font-size: 14px; border-collapse: collapse; width: 100%; margin: 1em 0; font-variant-numeric: tabular-nums lining-nums; }
+    .measure th, .measure td { text-align: left; padding: 6px 10px 6px 0; vertical-align: top; }
+    .measure thead th { border-top: 1px solid var(--ink); border-bottom: 1px solid var(--rule); font-weight: 600; color: var(--ink); }
+    .measure tbody tr:last-child td { border-bottom: 1px solid var(--ink); }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="runhead"><a href="../../">Motion Studio</a> / Drill 14</div>
+    <h1>Timing and spacing</h1>
+    <p class="dek">A drop of dew, twice. Timing is how long each thing takes. Spacing is how far it moves between drawings. Almost all of the life is in the spacing.</p>
+
+    <div class="wide">
+      <div class="pair">
+        <figure><div class="fig-title">Eased <span>one curve, no physics</span></div><canvas id="rigid" aria-label="Eased drop"></canvas></figure>
+        <figure><div class="fig-title">Alive <span>12 drawings a second</span></div><canvas id="alive" aria-label="Alive drop"></canvas></figure>
+      </div>
+      <div class="controls" id="principles" aria-label="Principles on the right-hand drop"></div>
+      <div class="controls" id="tools" aria-label="Animator tools">
+        <label>Speed <input id="speed" type="range" min="0.1" max="1" step="0.05" value="1"><output id="speed-out">1x</output></label>
+      </div>
+      <figcaption>The red ticks on the right are where the drop sits on each drawing of its fall. Eased: ticks bunch at both ends, so it creeps, hurries, then brakes before the water, which nothing falling does. Gravity: ticks start close and spread wider every drawing, and the drop is still accelerating when it hits. Slow it to 0.2x and turn on the onion skin to see each drawing.</figcaption>
+    </div>
+
+    <section class="notes">
+      <h2>What this teaches</h2>
+      <ul>
+        <li><strong>Spacing is the physics.</strong> A falling thing covers 1, 3, 5, 7 units on successive drawings (distance grows with the square of time). An ease-in-out curve brakes at the end; it reads as a hand placing the drop, not gravity dropping it. Choose spacing from what is pushing the thing.</li>
+        <li><strong>Anticipation tells the eye where to look.</strong> Before it falls the drop gathers, stretches and necks down at the tip. The viewer knows something is about to happen a few drawings before it does, so the fall lands instead of surprising.</li>
+        <li><strong>Squash and stretch keep the volume.</strong> Fast means long, impact means flat and wide, and right after release it overshoots into a squat and wobbles. Width shrinks when height grows (stretch s gives width r / &radic;s, height r &middot; s), so it reads as liquid, not rubber.</li>
+        <li><strong>Follow-through belongs to the other thing.</strong> The leaf sags under the weight, then springs back past rest and settles on a damped spring. The drop leaving is shown by the leaf, too.</li>
+        <li><strong>Secondary action finishes the beat.</strong> The splash crown and rings arrive after the main event and fade on their own clocks. They are why the impact has weight.</li>
+        <li><strong>Moving holds.</strong> Even while it waits, the drop swells and trembles slightly. A perfectly still drawing inside a moving film looks like the film stopped.</li>
+      </ul>
+
+      <h2>The lines that matter</h2>
+<pre><code>// State is a pure function of time, so onion skin = ask about earlier drawings
+const drop = dropAt(t);                      // { x, y, r, stretch, neck }
+for (let k = 1; k &lt;= 6; k++) ghost(dropAt(t - k / 12));
+
+// Gravity spacing versus an easing curve
+y = top + (G * k * k) / 2;                   // falls: 1, 3, 5, 7 ...
+y = top + easeInOut(k / dur) * fall;          // placed: slow, fast, slow
+
+// Squash and stretch, area kept
+width = r / Math.sqrt(stretch); height = r * stretch;</code></pre>
+
+      <h2>Learned from</h2>
+      <p>Richard Williams, <i>The Animator&rsquo;s Survival Kit</i> (timing, spacing charts, onion skinning on the light table). Frank Thomas and Ollie Johnston, <i>The Illusion of Life</i> (squash and stretch, anticipation, follow-through, secondary action). The water drop is a classic animation exercise; this is a code version of it.</p>
+    </section>
+  </main>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
+
