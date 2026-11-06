@@ -415,3 +415,31 @@ export function construction(ctx, a, b, { extend = 60, color = INK.blue, alpha =
   const ux = dx / l, uy = dy / l;
   inkLine(ctx, [[a[0] - ux * extend, a[1] - uy * extend], [b[0] + ux * extend, b[1] + uy * extend]], { width, color, alpha, wobble: 0.3, taper: false, passes: 1, seed });
 }
+
+// Loose pigment: the hand-made alternative to a halftone grid. Many faint, irregular watercolor
+// blobs, dropped where tone(x, y) asks for color, so value builds up in soft, uneven pools; then
+// granulation, the speckle pigment leaves when it settles into the paper's tooth, in clumps.
+export function pigment(ctx, clip, { tone = () => 0.5, color = INK.federal, seed = 21, blobs = 70, size = [40, 120], alpha = 0.06, grain = 2200 } = {}) {
+  const b = bbox(clip), R = rng(seed), n = noise2(seed + 1);
+  ctx.save();
+  pathOf(ctx, clip);
+  ctx.clip();
+  ctx.fillStyle = color;
+  let placed = 0;
+  for (let tries = 0; placed < blobs && tries < blobs * 8; tries++) {
+    const x = b.x0 + R() * b.w, y = b.y0 + R() * b.h;
+    if (R() > tone(x, y)) continue;
+    const r = size[0] + R() * (size[1] - size[0]);
+    const base = Array.from({ length: 10 }, (_, i) => { const a = (i / 10) * Math.PI * 2; return [x + Math.cos(a) * r, y + Math.sin(a) * r * 0.45]; });
+    const shape = deform(base, 3, 0.16, R);
+    for (let l = 0; l < 3; l++) {
+      ctx.globalAlpha = alpha;
+      pathOf(ctx, deform(shape, 1, 0.08, R));
+      ctx.fill();
+    }
+    placed++;
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+  stipple(ctx, clip, { tone: (x, y) => tone(x, y) * clamp(0.5 + n(x / 18, y / 18) * 0.9), count: grain, r: 0.85, color, seed: seed + 2, alpha: 0.55 });
+}

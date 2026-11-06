@@ -2,7 +2,7 @@
 // even, closed line; marks clipped to silhouettes). Right: marks and edges that describe form.
 // Light comes from the upper left throughout, and every choice below answers to it.
 import {
-  paper, inkLayer, inkLine, halftone, stipple, wash, noise2, pathOf, circlePts, rng, clamp, lerp, INK,
+  paper, surface, inkLayer, inkLine, halftone, stipple, wash, pigment, noise2, pathOf, circlePts, rng, clamp, lerp, INK,
   flowStrokes, formOutline, lightBeams, construction,
 } from '../../film/kit.js';
 import {
@@ -19,6 +19,7 @@ const FORM = {
   shadow: 'Contact shadow',
   depth: 'Bank and depth',
   reflect: 'Reflections and glints',
+  pigment: 'Loose pigment',
   beams: 'Light beams',
   guides: 'Construction lines',
 };
@@ -56,35 +57,43 @@ function poolForm(ctx, splash, form, drop, t) {
   const ell = (dy = 0, grow = 0) => circlePts(cx, cy, 1, 72).map(([x, y]) => [cx + (x - cx) * (rx + grow), cy + dy + (y - cy) * (ry + grow * 0.35)]);
   const pool = ell();
 
-  if (form.depth) {
-    // The water sits below the ground. The bank is an uneven watercolor wash with no outline of its
-    // own: it fades into the paper, so only the water line is a found edge.
-    const n = noise2(19);
-    const bank = (grow) => ell(-2, grow).map(([x, y]) => { const a = Math.atan2((y - cy) / ry, (x - cx) / rx), k = 1 + 0.045 * n(Math.cos(a) * 1.5, Math.sin(a) * 1.5); return [cx + (x - cx) * k, cy + (y - cy) * k]; });
-    wash(ctx, bank(34), { color: '#c9a97c', seed: 12, layers: 16, alpha: 0.09, spread: 0.05 });
-    const ground = bank(80);
-    stipple(ctx, ground, { tone: (x, y) => 0.55 * clamp(1.25 - Math.hypot((x - cx) / (rx + 60), (y - cy) / (ry + 22)) * 1.2), count: 3200, r: 0.8, color: INK.sepia, seed: 13, alpha: 0.6 });
-    ctx.save(); pathOf(ctx, pool); ctx.clip(); ctx.drawImage(paper(ctx.canvas.width), 0, 0, 1000, 1000); ctx.restore();
-  }
-  // Fresnel: the far water reflects the pale sky, the near water lets you see down into the dark.
-  inkLayer(ctx, (g) => halftone(g, pool, { tone: (x, y) => clamp(0.12 + (y - POOL_Y) / 230), cell: 9, angle: 0.4, color: INK.federal }), { grain: 0.35, seed: 4 });
-
-  if (form.depth) {
-    // The far bank seen across the water: a shaded wall between the rim and the water line.
-    ctx.save();
-    pathOf(ctx, pool); ctx.clip();
-    inkLayer(ctx, (g) => { g.fillStyle = '#6b5137'; g.beginPath(); for (const P of [pool, ell(14)]) { P.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); } g.fill('evenodd'); }, { grain: 0.5, seed: 15 });
-    ctx.restore();
-    // Pebbles under the shallow near edge, softened and tinted by the water over them.
-    const R = rng(77);
-    for (let i = 0; i < 16; i++) {
-      const a = Math.PI * (0.12 + R() * 0.76), d = 0.55 + R() * 0.38;
-      const px = cx + Math.cos(a) * rx * d, py = cy + Math.sin(a) * ry * d, pr = 6 + R() * 10;
-      const tilt = R() * 0.4 - 0.2;
-      inkLayer(ctx, (g) => { g.fillStyle = '#b3a183'; g.globalAlpha = 0.32; g.beginPath(); g.ellipse(px, py, pr, pr * 0.45, tilt, 0, Math.PI * 2); g.fill(); }, { grain: 0.4, seed: 16 });
-      inkLine(ctx, circlePts(px, py, 1, 24).map(([x, y]) => [px + (x - px) * pr, py + (y - py) * pr * 0.45]), { width: 0.7, color: INK.federal, alpha: 0.3, seed: 90 + i, passes: 1, taper: false });
+  // Nothing in this block changes between drawings (bank, water pigment, far wall, pebbles), so it
+  // is painted once per set of switches and reused. Only ripples, glints and reflections are live.
+  const fresnel = (x, y) => clamp(0.12 + (y - POOL_Y) / 230);
+  const W = ctx.canvas.width, cache = surface(`pond:${W}:${form.depth}:${form.pigment}`, W, W);
+  if (!cache.painted) {
+    const g = cache.getContext('2d');
+    g.setTransform(W / 1000, 0, 0, W / 1000, 0, 0);
+    if (form.depth) {
+      // The water sits below the ground. The bank is an uneven watercolor wash with no outline of
+      // its own: it fades into the paper, so only the water line is a found edge.
+      const n = noise2(19);
+      const bank = (grow) => ell(-2, grow).map(([x, y]) => { const a = Math.atan2((y - cy) / ry, (x - cx) / rx), k = 1 + 0.045 * n(Math.cos(a) * 1.5, Math.sin(a) * 1.5); return [cx + (x - cx) * k, cy + (y - cy) * k]; });
+      wash(g, bank(34), { color: '#c9a97c', seed: 12, layers: 16, alpha: 0.09, spread: 0.05 });
+      stipple(g, bank(80), { tone: (x, y) => 0.55 * clamp(1.25 - Math.hypot((x - cx) / (rx + 60), (y - cy) / (ry + 22)) * 1.2), count: 3200, r: 0.8, color: INK.sepia, seed: 13, alpha: 0.6 });
+      g.save(); pathOf(g, pool); g.clip(); g.drawImage(paper(W), 0, 0, 1000, 1000); g.restore();
     }
+    // Fresnel: the far water reflects the pale sky, the near water lets you see down into the dark.
+    if (form.pigment) inkLayer(g, (l) => pigment(l, pool, { tone: fresnel, color: INK.federal, seed: 21, blobs: 90, size: [50, 150], alpha: 0.07, grain: 2600 }), { grain: 0.25, seed: 4 });
+    else inkLayer(g, (l) => halftone(l, pool, { tone: fresnel, cell: 9, angle: 0.4, color: INK.federal }), { grain: 0.35, seed: 4 });
+    if (form.depth) {
+      // The far bank seen across the water: a shaded wall between the rim and the water line.
+      g.save();
+      pathOf(g, pool); g.clip();
+      inkLayer(g, (l) => { l.fillStyle = '#6b5137'; l.beginPath(); for (const P of [pool, ell(14)]) { P.forEach(([x, y], i) => (i ? l.lineTo(x, y) : l.moveTo(x, y))); l.closePath(); } l.fill('evenodd'); }, { grain: 0.5, seed: 15 });
+      g.restore();
+      // Pebbles under the shallow near edge, softened and tinted by the water over them.
+      const R = rng(77);
+      for (let i = 0; i < 16; i++) {
+        const a = Math.PI * (0.12 + R() * 0.76), d = 0.55 + R() * 0.38;
+        const px = cx + Math.cos(a) * rx * d, py = cy + Math.sin(a) * ry * d, pr = 6 + R() * 10, tilt = R() * 0.4 - 0.2;
+        inkLayer(g, (l) => { l.fillStyle = '#b3a183'; l.globalAlpha = 0.32; l.beginPath(); l.ellipse(px, py, pr, pr * 0.45, tilt, 0, Math.PI * 2); l.fill(); }, { grain: 0.4, seed: 16 });
+        inkLine(g, circlePts(px, py, 1, 24).map(([x, y]) => [px + (x - px) * pr, py + (y - py) * pr * 0.45]), { width: 0.7, color: INK.federal, alpha: 0.3, seed: 90 + i, passes: 1, taper: false });
+      }
+    }
+    cache.painted = true;
   }
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(cache, 0, 0); ctx.restore();
   if (form.contour) {
     // Strokes follow the ellipse, so the surface reads as a flat plane in perspective.
     // Tangent to the ellipse through (x, y): perpendicular to the gradient (x / rx^2, y / ry^2).
