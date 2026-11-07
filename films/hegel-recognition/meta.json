@@ -1,0 +1,7 @@
+{
+  "title": "Lord and Bondsman",
+  "summary": "Hegel on recognition, as an 86-second code-drawn film from a checked script. Work in progress: beats 1 and 2.",
+  "skill": "film",
+  "library": ["Canvas 2D", "film kit", "motion library"],
+  "learnedFrom": ["Hegel, Phenomenology of Spirit, paragraphs 178 to 196", "Kevin T. Ngo, dew and answer"]
+}

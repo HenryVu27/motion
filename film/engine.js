@@ -5,10 +5,11 @@ import { paper, caption, clamp, INK, surface } from './kit.js';
 
 const UNITS = 1000;   // scenes draw in a 1000 x 1000 space, whatever the output size
 
-export function defineFilm({ title, size = 1080, fps = 30, paperSeed = 7, paperTone = INK.paper, scenes, captions = [], crossfade = 0.5 }) {
+// drawings: hold each drawing for 1/drawings s (12 at fps 24 is on twos); null draws every frame.
+export function defineFilm({ title, size = 1080, fps = 30, drawings = null, paperSeed = 7, paperTone = INK.paper, scenes, captions = [], crossfade = 0.5 }) {
   let start = 0;
   const timed = scenes.map((s) => { const out = { ...s, start }; start += s.dur; return out; });
-  return { title, size, fps, paperSeed, paperTone, scenes: timed, captions, crossfade, duration: start, frames: Math.round(start * fps) };
+  return { title, size, fps, drawings, paperSeed, paperTone, scenes: timed, captions, crossfade, duration: start, frames: Math.round(start * fps) };
 }
 
 function drawScene(ctx, film, scene, T) {
@@ -20,17 +21,18 @@ function drawScene(ctx, film, scene, T) {
 
 // Draw the frame at global time T (seconds) onto a canvas of film.size.
 export function renderAt(canvas, film, T) {
+  if (film.drawings) T = Math.floor(T * film.drawings + 1e-6) / film.drawings;
   const ctx = canvas.getContext('2d');
   const k = canvas.width / UNITS;
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.globalAlpha = 1;
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.drawImage(paper(canvas.width, film.paperSeed, film.paperTone), 0, 0);
-  ctx.setTransform(k, 0, 0, k, 0, 0);
-
   const i = Math.max(0, film.scenes.findIndex((s) => T >= s.start && T < s.start + s.dur));
   const idx = T >= film.duration ? film.scenes.length - 1 : i;
   const scene = film.scenes[idx];
+  const sheet = (s) => paper(canvas.width, film.paperSeed, s.paperTone ?? film.paperTone);   // a scene may choose its own stock
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.drawImage(sheet(scene), 0, 0);
+  ctx.setTransform(k, 0, 0, k, 0, 0);
   drawScene(ctx, film, scene, T);
 
   // Crossfade: the previous scene's last moment dissolves into this one, through the paper.
@@ -39,7 +41,7 @@ export function renderAt(canvas, film, T) {
     const prev = film.scenes[idx - 1];
     const buf = surface('xfade', canvas.width, canvas.height), g = buf.getContext('2d');
     g.setTransform(1, 0, 0, 1, 0, 0);
-    g.drawImage(paper(canvas.width, film.paperSeed, film.paperTone), 0, 0);
+    g.drawImage(sheet(prev), 0, 0);
     g.setTransform(k, 0, 0, k, 0, 0);
     drawScene(g, film, prev, prev.start + prev.dur - 0.001);
     ctx.save();

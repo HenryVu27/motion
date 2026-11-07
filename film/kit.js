@@ -79,6 +79,21 @@ export function resample(pts, step = 4) {
   return out;
 }
 
+// A smooth curve through control points (Catmull-Rom), returned as a dense polyline.
+export function smooth(pts, per = 8, closed = false) {
+  const P = closed ? [pts[pts.length - 1], ...pts, pts[0], pts[1]] : [pts[0], ...pts, pts[pts.length - 1]];
+  const out = [];
+  for (let i = 1; i < P.length - 2; i++) {
+    const [p0, p1, p2, p3] = [P[i - 1], P[i], P[i + 1], P[i + 2]];
+    for (let s = 0; s < per; s++) {
+      const t = s / per, t2 = t * t, t3 = t2 * t;
+      out.push([0, 1].map((d) => 0.5 * (2 * p1[d] + (-p0[d] + p2[d]) * t + (2 * p0[d] - 5 * p1[d] + 4 * p2[d] - p3[d]) * t2 + (-p0[d] + 3 * p1[d] - 3 * p2[d] + p3[d]) * t3)));
+    }
+  }
+  if (!closed) out.push(pts[pts.length - 1]);
+  return out;
+}
+
 // ---------- Offscreen surfaces ----------
 
 const surfaces = new Map();
