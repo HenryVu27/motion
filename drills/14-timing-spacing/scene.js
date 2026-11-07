@@ -6,7 +6,9 @@ export const SIZE = 720, FPS_DRAW = 12, CYCLE = 3.6;
 export const STEM = [170, 150];            // where the leaf is held; it bends about this point
 export const TIP = [540, 300];             // the leaf tip the drop hangs from
 export const POOL_Y = 760;                 // water surface the drop falls into
-export const RELEASE = 1.55, IMPACT = 2.2; // seconds into the cycle
+export const RELEASE = 1.55, IMPACT = 2.2;
+// The pond is centred just below where the drop lands, so ripples spread inside the water.
+export const POND = { cx: 500, cy: POOL_Y + 30, rx: 460, ry: 85 }; // seconds into the cycle
 
 export const PRINCIPLES = {
   twos: 'On twos',
@@ -19,17 +21,28 @@ export const PRINCIPLES = {
 
 // ---------- State as functions of time ----------
 
-// The leaf: it sags as the drop gathers weight, then springs back past rest and settles.
+// The leaf is a cantilever, not a stiff board. leafAt returns a bend: a map from rest-pose points
+// to where they are now. Deflection grows along the leaf (shape u^2 (3 - u) / 2, zero at the stem,
+// one at the tip), so the tip that carries the drop sags most. On release the stem lets go first
+// and the tip follows late, overshoots and whips: overlapping action.
+const ROOT = [STEM[0] - 140, STEM[1] - 34];
+const AXIS = [TIP[0] - ROOT[0], TIP[1] - ROOT[1]], AXIS2 = AXIS[0] ** 2 + AXIS[1] ** 2;
+const SAG = 34;                                                     // units the tip drops under the full drop
+const deflection = (u) => (u * u * (3 - u)) / 2;
 export function leafAt(t, on) {
-  if (!on.follow) return 0;
-  if (t < RELEASE) return -0.035 * ease.inOut(clamp((t - 0.3) / (RELEASE - 0.3)));   // sag (radians)
-  const k = t - RELEASE;
-  return -0.035 * Math.exp(-3.2 * k) * Math.cos(11 * k);                              // damped spring
+  if (!on.follow) return (p) => p;
+  const sag = (u) => {
+    if (t < RELEASE) return SAG * ease.inOut(clamp((t - 0.3) / (RELEASE - 0.3)));
+    const k = t - RELEASE - 0.1 * u;                                // the release travels stem to tip
+    if (k < 0) return SAG;
+    return SAG * Math.exp(-3 * k) * Math.cos(10 * k) - 10 * u * u * Math.exp(-5 * k) * Math.sin(24 * k);
+  };
+  return ([x, y]) => {
+    const u = clamp(((x - ROOT[0]) * AXIS[0] + (y - ROOT[1]) * AXIS[1]) / AXIS2);
+    return [x, y + sag(u) * deflection(u)];
+  };
 }
-export const tipAt = (t, on) => {
-  const a = leafAt(t, on), dx = TIP[0] - STEM[0], dy = TIP[1] - STEM[1];
-  return [STEM[0] + dx * Math.cos(-a) - dy * Math.sin(-a), STEM[1] + dx * Math.sin(-a) + dy * Math.cos(-a)];
-};
+export const tipAt = (t, on) => leafAt(t, on)(TIP);
 
 // The drop: position, radius, stretch (height/width, area kept), teardrop pull toward the tip.
 export function dropAt(t, on) {
@@ -124,21 +137,16 @@ export function leafShape() {
   return { leaf: [...top, ...bot], rib };
 }
 
-export function drawLeaf(ctx, angle) {
-  ctx.save();
-  ctx.translate(...STEM); ctx.rotate(-angle); ctx.translate(-STEM[0], -STEM[1]);
-  const [tx, ty] = TIP;
-  const { leaf } = leafShape();
+export function drawLeaf(ctx, bend = (p) => p) {
+  const shape = leafShape(), leaf = shape.leaf.map(bend), rib = shape.rib.map(bend);
   inkLayer(ctx, (g) => { g.fillStyle = '#7da35a'; pathOf(g, leaf); g.fill(); }, { grain: 0.45, seed: 7 });
   hatch(ctx, leaf, { angle: 0.9, spacing: 5, tone: (x, y) => (y - (STEM[1] + (x - STEM[0]) * 0.32)) / 50, levels: [0.1, 0.6], color: '#2f4a22', width: 0.8, alpha: 0.55, seed: 21 });
-  const rib = Array.from({ length: 21 }, (_, i) => { const u = i / 20; return [lerp(STEM[0] - 140, tx, u), lerp(STEM[1] - 34, ty, u ** 1.4)]; });
   inkLine(ctx, rib, { width: 1.8, seed: 22, color: '#2f4a22' });
   inkShape(ctx, leaf, { width: 1.5, seed: 23 });
-  ctx.restore();
 }
 
 export function drawPool(ctx, splash, t) {
-  const pool = circlePts(500, POOL_Y + 70, 1, 64).map(([x, y]) => [500 + (x - 500) * 460, POOL_Y + 70 + (y - POOL_Y - 70) * 90]);
+  const pool = circlePts(POND.cx, POND.cy, 1, 64).map(([x, y]) => [POND.cx + (x - POND.cx) * POND.rx, POND.cy + (y - POND.cy) * POND.ry]);
   inkLayer(ctx, (g) => halftone(g, pool, { tone: (x, y) => clamp(0.15 + (y - POOL_Y) / 260), cell: 9, angle: 0.4, color: INK.federal }), { grain: 0.35, seed: 4 });
   inkShape(ctx, pool, { width: 1.2, color: INK.federal, seed: 30, alpha: 0.7 });
   if (!splash) return;
@@ -186,7 +194,7 @@ export function draw(canvas, T, on, tools, rigid = false) {
   const state = rigid ? rigidDropAt : (s) => dropAt(s, on);
   const step = rigid ? 1 / 30 : on.twos ? 1 / FPS_DRAW : 1 / 30;
   if (tools.chart) spacingChart(ctx, state, rigid ? 1.2 : RELEASE, rigid ? 2.2 : IMPACT, rigid ? 1 / 12 : 1 / FPS_DRAW, t);
-  drawLeaf(ctx, rigid ? 0 : leafAt(t, on));
+  drawLeaf(ctx, rigid ? undefined : leafAt(t, on));
   drawPool(ctx, !rigid && on.secondary ? splashAt(t) : null, t);
   if (tools.onion) onionSkin(ctx, t, state, rigid ? 2 / 30 : step);
   drawDrop(ctx, state(t), 11);

@@ -2,11 +2,11 @@
 // even, closed line; marks clipped to silhouettes). Right: marks and edges that describe form.
 // Light comes from the upper left throughout, and every choice below answers to it.
 import {
-  paper, surface, inkLayer, inkLine, halftone, stipple, wash, pigment, noise2, pathOf, circlePts, rng, clamp, lerp, INK,
+  paper, surface, inkLayer, inkLine, halftone, stipple, wash, pigment, noise2, pathOf, circlePts, rng, clamp, lerp, ease, INK,
   flowStrokes, formOutline, lightBeams, construction,
 } from '../../film/kit.js';
 import {
-  SIZE, FPS_DRAW, CYCLE, STEM, TIP, POOL_Y, PRINCIPLES,
+  SIZE, FPS_DRAW, CYCLE, STEM, TIP, POOL_Y, IMPACT, POND, PRINCIPLES,
   draw as drawFlat, dropAt, leafAt, splashAt, dropPath, leafShape,
 } from '../14-timing-spacing/scene.js';
 import { loop } from '../../shared/page.js';
@@ -28,10 +28,9 @@ const LEAF_DARK = '#2f4a22', LEAF = '#7da35a', LEAF_LIGHT = '#d9e3a0';
 
 // ---------- Leaf ----------
 
-function leafForm(ctx, angle, form) {
-  const { leaf, rib } = leafShape();
+function leafForm(ctx, bend, form) {
+  const shape = leafShape(), leaf = shape.leaf.map(bend), rib = shape.rib.map(bend);
   ctx.save();
-  ctx.translate(...STEM); ctx.rotate(-angle); ctx.translate(-STEM[0], -STEM[1]);
   inkLayer(ctx, (g) => { g.fillStyle = LEAF; pathOf(g, leaf); g.fill(); }, { grain: 0.45, seed: 7 });
 
   // Which side of the midrib a point is on, and how far along the leaf.
@@ -53,7 +52,7 @@ function leafForm(ctx, angle, form) {
 // ---------- Pool ----------
 
 function poolForm(ctx, splash, form, drop, t) {
-  const cx = 500, cy = POOL_Y + 70, rx = 460, ry = 90;
+  const { cx, cy, rx, ry } = POND;
   const ell = (dy = 0, grow = 0) => circlePts(cx, cy, 1, 72).map(([x, y]) => [cx + (x - cx) * (rx + grow), cy + dy + (y - cy) * (ry + grow * 0.35)]);
   const pool = ell();
 
@@ -93,7 +92,7 @@ function poolForm(ctx, splash, form, drop, t) {
     }
     cache.painted = true;
   }
-  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(cache, 0, 0); ctx.restore();
+  if (form.reflect) rippled(ctx, cache, pool, t); else { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(cache, 0, 0); ctx.restore(); }
   if (form.contour) {
     // Strokes follow the ellipse, so the surface reads as a flat plane in perspective.
     // Tangent to the ellipse through (x, y): perpendicular to the gradient (x / rx^2, y / ry^2).
@@ -129,6 +128,8 @@ function poolForm(ctx, splash, form, drop, t) {
   if (form.edges) formOutline(ctx, pool, { light: LIGHT, width: 2, color: INK.federal, seed: 30, lost: 0.35, alpha: 0.8 });
   else inkLine(ctx, [...pool, pool[0]], { width: 1.2, color: INK.federal, seed: 30, alpha: 0.7, taper: false });
   if (!splash) return;
+  ctx.save();
+  pathOf(ctx, pool); ctx.clip();
   for (const ring of splash.rings) {
     const pts = circlePts(TIP[0], POOL_Y, 1, 64).map(([x, y]) => [TIP[0] + (x - TIP[0]) * ring.r, POOL_Y + (y - POOL_Y) * ring.r * 0.22]);
     if (form.reflect) {
@@ -140,9 +141,54 @@ function poolForm(ctx, splash, form, drop, t) {
       inkLine(ctx, pts, { width: 1.4, color: INK.federal, seed: 31, alpha: 0.85 * ring.alpha, taper: false });
     }
   }
-  for (const d of splash.drops) if (d.alive) dropForm(ctx, { x: d.x, y: d.y, r: d.r, stretch: 1.2, neck: 0, visible: true }, { ...form, lens: false }, 0);
+  ctx.restore();
+  for (const d of splash.drops) if (d.alive) dropForm(ctx, { x: d.x, y: d.y, r: d.r, stretch: 1.2, neck: 0, visible: true }, { ...form, lens: false });
 }
 const R2 = (G) => G() * Math.PI * 2;
+
+// The water itself disperses: each passing wave pushes the pond's own texture outward, so pigment,
+// pebbles and the far wall all ripple, instead of rings being drawn on top of a frozen surface.
+// The painted pond is redrawn in thin elliptical bands, each magnified about the impact point by
+// the wave's displacement there. Packets follow the same timing as the rings in splashAt.
+function rippled(ctx, cache, pool, t) {
+  const W = ctx.canvas.width, s = W / 1000, ix = TIP[0] * s, iy = POOL_Y * s, SQ = 0.22, k = t - IMPACT;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(cache, 0, 0);
+  if (k > 0 && k < 1.8) {
+    ctx.beginPath();
+    pool.forEach(([x, y], i) => (i ? ctx.lineTo(x * s, y * s) : ctx.moveTo(x * s, y * s)));
+    ctx.clip();
+    for (const d of [0, 0.22, 0.5]) {
+      const q = (k - d) / 1.2;
+      if (q <= 0 || q >= 1) continue;
+      const R = 30 + 230 * ease.out(q), amp = 9 * (1 - q) ** 1.5;
+      for (let r = Math.max(6, R - 40); r < R + 14; r += 5) {
+        const disp = amp * Math.sin(((r - R) / 13) * Math.PI) * clamp((r - R + 40) / 20) * clamp((R + 14 - r) / 8);
+        const f = 1 + disp / r;
+        ctx.save();
+        ctx.beginPath();
+        ctx.ellipse(ix, iy, (r + 5) * s, (r + 5) * SQ * s, 0, 0, Math.PI * 2);
+        ctx.ellipse(ix, iy, r * s, r * SQ * s, 0, 0, Math.PI * 2);
+        ctx.clip('evenodd');
+        ctx.translate(ix, iy); ctx.scale(f, f); ctx.translate(-ix, -iy);
+        ctx.drawImage(cache, 0, 0);
+        ctx.restore();
+      }
+    }
+    // Where the drop went in, the water is pushed aside for a moment: a pale crater that closes.
+    const c = clamp(1 - k / 0.45);
+    if (c > 0) {
+      const g = ctx.createRadialGradient(ix, iy, 0, ix, iy, 46 * s);
+      g.addColorStop(0, `rgba(242,234,217,${0.8 * c})`);
+      g.addColorStop(1, 'rgba(242,234,217,0)');
+      ctx.translate(ix, iy); ctx.scale(1, SQ * 1.6); ctx.translate(-ix, -iy);
+      ctx.fillStyle = g;
+      ctx.fillRect(ix - 60 * s, iy - 60 * s, 120 * s, 120 * s);
+    }
+  }
+  ctx.restore();
+}
 
 // The shadow a falling drop throws on the water: wide and faint when high, small and dark as it lands.
 function contactShadow(ctx, d) {
@@ -154,7 +200,7 @@ function contactShadow(ctx, d) {
 
 // ---------- Drop ----------
 
-function dropForm(ctx, d, form, leafAngle) {
+function dropForm(ctx, d, form, bend = (p) => p) {
   if (!d.visible) return;
   const P = dropPath(d), w = d.r / Math.sqrt(d.stretch), h = d.r * d.stretch;
   inkLayer(ctx, (g) => { g.fillStyle = '#d6e7f1'; pathOf(g, P); g.fill(); }, { grain: 0.3, seed: 5 });
@@ -167,9 +213,8 @@ function dropForm(ctx, d, form, leafAngle) {
     ctx.translate(d.x, d.y);
     ctx.scale(-w / 330, -h / 330);
     ctx.translate(-TIP[0], -(TIP[1] + POOL_Y) / 2);
-    inkLayer(ctx, (g) => { g.fillStyle = INK.federal; g.globalAlpha = 0.75; g.beginPath(); g.ellipse(500, POOL_Y + 70, 460, 140, 0, 0, Math.PI * 2); g.fill(); }, { grain: 0.25, seed: 3 });
-    ctx.translate(...STEM); ctx.rotate(-leafAngle); ctx.translate(-STEM[0], -STEM[1]);
-    inkLayer(ctx, (g) => { g.fillStyle = LEAF; g.globalAlpha = 0.9; pathOf(g, leafShape().leaf); g.fill(); }, { grain: 0.25, seed: 2 });
+    inkLayer(ctx, (g) => { g.fillStyle = INK.federal; g.globalAlpha = 0.75; g.beginPath(); g.ellipse(POND.cx, POND.cy, POND.rx, POND.ry * 1.6, 0, 0, Math.PI * 2); g.fill(); }, { grain: 0.25, seed: 3 });
+    inkLayer(ctx, (g) => { g.fillStyle = LEAF; g.globalAlpha = 0.9; pathOf(g, leafShape().leaf.map(bend)); g.fill(); }, { grain: 0.25, seed: 2 });
     ctx.restore();
     // Thick water at the rim darkens; light that passes through gathers on the far side.
     ctx.save();
@@ -208,17 +253,17 @@ function drawForm(canvas, T, form) {
   ctx.drawImage(paper(canvas.width), 0, 0);
   ctx.setTransform(k, 0, 0, k, 0, 0);
 
-  const angle = leafAt(t, MOTION), drop = dropAt(t, MOTION);
+  const bend = leafAt(t, MOTION), drop = dropAt(t, MOTION);
   if (form.guides) {
     // The drop's path, the water line, and the direction the light travels.
     construction(ctx, [TIP[0], TIP[1]], [TIP[0], POOL_Y], { extend: 80, seed: 71 });
     construction(ctx, [60, POOL_Y], [940, POOL_Y], { extend: 30, seed: 72 });
     if (drop.visible) construction(ctx, [drop.x + LIGHT[0] * 150, drop.y + LIGHT[1] * 150], [drop.x - LIGHT[0] * 150, drop.y - LIGHT[1] * 150], { extend: 0, seed: 73, alpha: 0.35 });
   }
-  leafForm(ctx, angle, form);
+  leafForm(ctx, bend, form);
   poolForm(ctx, splashAt(t), form, drop, t);
   if (form.shadow) contactShadow(ctx, drop);
-  dropForm(ctx, drop, form, angle);
+  dropForm(ctx, drop, form, bend);
   if (form.beams) lightBeams(ctx, { angle: -0.64, bands: [[-280, 220], [-20, 110], [230, 260]], color: 'rgba(255,236,190,0.28)' });
 }
 
