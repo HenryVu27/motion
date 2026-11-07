@@ -1,10 +1,10 @@
 // Lord and Bondsman: Hegel, Phenomenology of Spirit (1807), paragraphs 178 to 196.
 // Script and sources: script.md, sources.md (revision 2, approved 2026-11-07).
-// Built beat by beat; this file currently holds beats 1 and 2 (0:00 to 0:19).
-import { INK, clamp, ease, caption, inkLine } from '../../film/kit.js';
-import { cue, anticipate, spring, lag } from '../../film/motion.js';
+// Built beat by beat; this file currently holds beats 1 to 4 (0:00 to 0:38).
+import { INK, clamp, ease, caption, inkLine, inkLayer, pathOf, wash, setBoil, smooth } from '../../film/kit.js';
+import { cue, anticipate, spring, lag, overlap, drawingIndex } from '../../film/motion.js';
 import { defineFilm } from '../../film/engine.js';
-import { figure, vessel, drawPlan, drawInked, drawThing, drawVessel, branch, fruit, dust, hand, FRUIT, SKIN_B } from './figures.js';
+import { figure, vessel, drawPlan, drawInked, drawThing, drawVessel, crack, branch, fruit, dust, hand, FRUIT, SKIN_B } from './figures.js';
 
 // ---------- Beat 1: Desire (0:00 to 0:07). Paragraph 175: the object and the desire come back. ----------
 
@@ -33,7 +33,7 @@ const beat1 = {
     if (d.eatenAt !== null) dust(ctx, FRUIT, t - d.eatenAt, Math.round(d.eatenAt * 10));
     drawInked(ctx, figure('A'), { seed: 3 });
     // The hand turns a beat after the forearm: follow-through on the wrist.
-    hand(ctx, { shoulder: [330, 800], rest: [420, 980], target: FRUIT, reach: d.reach, grip: d.grip, lagAngle: 0.35 * (desire(t - 0.12).reach - d.reach) });
+    hand(ctx, { target: FRUIT, reach: d.reach, grip: d.grip, lagAngle: 0.35 * (desire(t - 0.12).reach - d.reach) });
     const title = Math.min(cue(t, 0.9, 1.4), 1 - cue(t, 4.6, 5.1));
     caption(ctx, 'Lord and Bondsman', 700, 120, { size: 60, italic: false, alpha: title });
     caption(ctx, 'Hegel, Phenomenology of Spirit, 1807', 700, 168, { size: 24, alpha: title * 0.8, color: INK.sepia });
@@ -84,12 +84,98 @@ const beat2 = {
   },
 };
 
+// ---------- Beat 3: The struggle (0:19 to 0:27). Paragraph 187: each seeks the other's death and stakes its own life. ----------
+
+const LUNGES = [0.6, 4.0], CONTACT = 1.0, REACH = 0.3;   // head-only tilt needs a little more swing to meet
+// Lean back, lunge until the brows meet, recoil on a damped spring; then again.
+function lungeTilt(t) {
+  const L = t < LUNGES[1] ? LUNGES[0] : LUNGES[1], k = t - L;
+  if (k < 0) return 0;
+  if (k < CONTACT) return REACH * anticipate(k / CONTACT, 0.25);
+  return spring(k - CONTACT, { from: REACH, to: 0, freq: 9, damping: 3.5 });
+}
+const contacts = LUNGES.map((l) => l + CONTACT);
+const near = (t, at, w) => Math.exp(-(((t - at) / w) ** 2));
+
+const beat3 = {
+  name: 'struggle', dur: 8,
+  draw(ctx, { t }) {
+    setBoil(drawingIndex(t));   // every drawing redrawn: the lines shake while they fight
+    try {
+      const hit = contacts.map((c) => (t >= c && t < c + 0.5 ? t - c : null)).find((k) => k !== null);
+      if (hit != null) ctx.translate(Math.sin(hit * 60) * 7 * Math.exp(-8 * hit), Math.cos(hit * 47) * 4 * Math.exp(-8 * hit));   // the jolt
+      const tilt = lungeTilt(t), A = figure('A', tilt), B = figure('B', tilt), V = vessel(A, B);
+      drawVessel(ctx, V, { amount: 0.6 });
+      crack(ctx, V, { progress: 0.5 * cue(t, contacts[0], contacts[0] + 0.4) + 0.5 * cue(t, contacts[1], contacts[1] + 0.5), bleed: cue(t, contacts[1], contacts[1] + 2.5) });
+      // Staking its own life: each lunger's line thins as it strikes.
+      const risk = 1 - 0.5 * Math.max(...contacts.map((c) => near(t, c, 0.3)));
+      drawInked(ctx, A, { line: risk, seed: 3 });
+      drawInked(ctx, B, { line: risk, skin: SKIN_B, seed: 13 });
+      // Riso red printed off register over both outlines: the fight in a second ink.
+      for (const f of [A, B]) inkLayer(ctx, (g) => { g.strokeStyle = INK.red; g.lineWidth = 2.4; g.globalAlpha = 0.55; pathOf(g, f.outline); g.stroke(); }, { grain: 0.45, offset: [5, 3], seed: 9 });
+      // At contact, a burst of short strokes where the brows meet.
+      for (const c of contacts) {
+        const k = t - c;
+        if (k < 0 || k > 0.35) continue;
+        const brow = [500, A.front.find((p) => p[1] > 380)?.[1] ?? 400];
+        for (let i = 0; i < 9; i++) {
+          const a = -Math.PI / 2 + (i - 4) * 0.38, r0 = 22 + k * 120, r1 = r0 + 26 * (1 - k / 0.35);
+          inkLine(ctx, [[brow[0] + Math.cos(a) * r0, brow[1] + Math.sin(a) * r0], [brow[0] + Math.cos(a) * r1, brow[1] + Math.sin(a) * r1]], { width: 2.4, seed: 40 + i, color: i % 2 ? INK.red : INK.ink });
+        }
+      }
+    } finally {
+      setBoil(0);
+    }
+  },
+};
+
+// ---------- Beat 4: The brink, and one yields (0:27 to 0:38). Paragraphs 188 to 190. ----------
+
+// The bow: a heavy, slow give that overshoots a little and settles; the crown lags the neck.
+const BOW = 0.5;   // radians: about 29 degrees
+const bowDrive = (t) => (t < 5 ? 0 : BOW - spring(t - 5, { from: BOW, to: 0, freq: 4, damping: 2.2 }));
+export const bowAt = (t) => (u) => overlap(bowDrive, t, u, { delay: 0.18 });
+
+const beat4 = {
+  name: 'brink', dur: 11,
+  draw(ctx, { t }) {
+    const A = figure('A'), B = figure('B', 0, bowAt(t));
+    const drain = cue(t, 0.3, 4);                       // B drains toward bare paper
+    const back = cue(t, 5.2, 6.5);                      // and both lines come back as he bows
+    // 0 to 5: if one of them dies, the middle between them collapses into a smear (paragraph 188).
+    const collapse = cue(t, 0.5, 3.5);
+    const V0 = vessel(figure('A'), figure('B'));
+    const bottom = Math.max(...V0.map((p) => p[1]));
+    const smear = V0.map(([x, y]) => [x, bottom + (y - bottom) * (1 - 0.92 * collapse)]);
+    if (t < 5) {
+      drawVessel(ctx, smear, { amount: 0.6 * (1 - cue(t, 3, 4.6)) });
+      crack(ctx, smear, { progress: 1, bleed: 1 - cue(t, 2, 4.6) });
+    } else {
+      // The middle reforms, lopsided: not a vessel any more.
+      drawVessel(ctx, vessel(A, B, 450), { amount: 0.45 * cue(t, 6, 7.5) });   // cut below the bowed face, so no slanted lid
+    }
+    const washIn = Math.min(cue(t, 0.3, 1.6), 1 - cue(t, 2.6, 4.6));
+    if (washIn > 0) { ctx.save(); ctx.globalAlpha = washIn; wash(ctx, B.outline, { color: '#9aa6b8', seed: 5, layers: 10, alpha: 0.1, spread: 0.03 }); ctx.restore(); }
+    // A's front edge, with nothing facing it, frays away too; both come back with the bow.
+    const aFade = t < 5 ? cue(t, 1.2, 4.2) : 1 - back;
+    drawInked(ctx, A, { ink: 1 - 0.75 * aFade, fray: aFade, seed: 3 });
+    const bInk = t < 5 ? 1 - drain : back;
+    if (bInk > 0.01) drawInked(ctx, B, { ink: bInk, skin: SKIN_B, seed: 13 });
+    // 8 to 11: his chain, his attachment to life, draws itself from him to the ground (paragraph 190).
+    const tether = cue(t, 8, 9.4);
+    if (tether > 0) {
+      const from = B.front.find((p) => p[1] > 760) ?? [600, 800];
+      inkLine(ctx, smooth([from, [from[0] + 30, from[1] + 70], [from[0] + 20, 900], [from[0] + 60, 1010]], 8), { width: 3.4, color: INK.ink, progress: tether, seed: 77 });
+    }
+  },
+};
+
 export default defineFilm({
   title: 'Lord and Bondsman',
   size: 1080,
   fps: 24,
   drawings: 12,
-  scenes: [beat1, beat2],
+  scenes: [beat1, beat2, beat3, beat4],
   crossfade: 0.4,
   captions: [
     { at: 8, until: 12, text: 'A self is a self only when recognised by another.' },
