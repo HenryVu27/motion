@@ -3,7 +3,8 @@
 A studio for code-drawn short films (the main goal, after Kevin T. Ngo: research/kevin-ngo.md), plus a portfolio of web animation techniques (drills) and interactive lessons. Goal behind it: Henry can take any project, history lesson or philosophical idea and turn it into drawn, animated art that makes one idea click.
 
 ## Layout
-- `films/slug/` code-drawn short films: `film.js` (scenes), `index.html` (player), `meta.json`. Kit in `film/kit.js`, engine and MP4 export in `film/engine.js`. Use the `make-film` skill.
+- `films/slug/` code-drawn short films: `film.js` (scenes), `index.html` (player), `meta.json`. Drawing kit in `film/kit.js`; motion library in `film/motion.js` (onTwos, spring, lag, overlap, bend, fall, ballistic, beat, squash, waves, ride, rings, rippleLayer, onionSkin, spacingChart): use these instead of writing physics in a scene; engine and MP4 export in `film/engine.js`. Use the `make-film` skill.
+- Script crew: `.claude/agents/scriptwriter.md` writes script.md and sources.md from primary texts; `.claude/agents/script-critic.md` reviews them adversarially. Both run before any animating.
 - `drills/NN-slug/` one technique per page: `index.html`, `main.js`, `meta.json`. Copy `drills/01-easing-and-springs` as the template.
 - `lessons/slug/` finished explainers that combine drills. Same three files, plus `sources.md` (every factual claim with a primary-source citation).
 - `shared/studio.css` tokens and base styles; `shared/page.js` helpers (`fitCanvas`, `loop`, `token`, `reducedMotion`). Do not fork these per page; add a token or helper here if two pages need it.

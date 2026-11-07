@@ -1,5 +1,6 @@
 // The dewdrop scene: its motion as pure functions of time, and the flat way of drawing it.
 // Drill 14 animates it; drill 15 reuses the same motion and changes only the drawing.
+import { cue, spring, overlap, bend, fall as fallBy, fallSpeed, ballistic, rings } from '../../film/motion.js';
 import { paper, inkLayer, inkLine, inkShape, hatch, halftone, pathOf, circlePts, rng, clamp, lerp, ease, INK } from '../../film/kit.js';
 
 export const SIZE = 720, FPS_DRAW = 12, CYCLE = 3.6;
@@ -26,21 +27,19 @@ export const PRINCIPLES = {
 // one at the tip), so the tip that carries the drop sags most. On release the stem lets go first
 // and the tip follows late, overshoots and whips: overlapping action.
 const ROOT = [STEM[0] - 140, STEM[1] - 34];
-const AXIS = [TIP[0] - ROOT[0], TIP[1] - ROOT[1]], AXIS2 = AXIS[0] ** 2 + AXIS[1] ** 2;
 const SAG = 34;                                                     // units the tip drops under the full drop
-const deflection = (u) => (u * u * (3 - u)) / 2;
 export function leafAt(t, on) {
   if (!on.follow) return (p) => p;
+  // Load builds as the drop grows; on release the spring travels stem to tip (overlap), and the
+  // tip adds a fast whip of its own.
+  const load = (k) => (k < 0 ? SAG * cue(t, 0.3, RELEASE) : spring(k, { from: SAG, to: 0, freq: 10, damping: 3 }));
   const sag = (u) => {
-    if (t < RELEASE) return SAG * ease.inOut(clamp((t - 0.3) / (RELEASE - 0.3)));
-    const k = t - RELEASE - 0.1 * u;                                // the release travels stem to tip
-    if (k < 0) return SAG;
-    return SAG * Math.exp(-3 * k) * Math.cos(10 * k) - 10 * u * u * Math.exp(-5 * k) * Math.sin(24 * k);
+    const k = t - RELEASE;
+    if (k < 0) return load(k);
+    const whip = (kk) => spring(kk, { from: -10 * u * u, to: 0, freq: 24, damping: 5, phase: -Math.PI / 2 });
+    return overlap(load, k, u, { delay: 0.1 }) + overlap(whip, k, u, { delay: 0.1 });
   };
-  return ([x, y]) => {
-    const u = clamp(((x - ROOT[0]) * AXIS[0] + (y - ROOT[1]) * AXIS[1]) / AXIS2);
-    return [x, y + sag(u) * deflection(u)];
-  };
+  return bend({ root: ROOT, tip: TIP, sag });
 }
 export const tipAt = (t, on) => leafAt(t, on)(TIP);
 
@@ -59,10 +58,10 @@ export function dropAt(t, on) {
   const start = dropAt(RELEASE - 1e-4, on), fall = POOL_Y - 10 - start.y;
   if (t < IMPACT) {
     const k = t - RELEASE, dur = IMPACT - RELEASE;
-    const p = on.gravity ? (k / dur) ** 2 : ease.inOut(k / dur);   // the spacing choice: gravity or a placing hand
-    const v = on.gravity ? (2 * fall * k) / dur ** 2 / 1400 : 0.4;
+    const p = on.gravity ? fallBy(k, dur, 1) : ease.inOut(k / dur);   // the spacing choice: gravity or a placing hand
+    const v = on.gravity ? fallSpeed(k, dur, fall) / 1400 : 0.4;
     // After release it snaps round, overshoots into a squat and wobbles, while speed stretches it.
-    const wobble = on.squash ? -0.28 * Math.exp(-9 * k) * Math.cos(30 * k) : 0;
+    const wobble = on.squash ? spring(k, { from: -0.28, to: 0, freq: 30, damping: 9 }) : 0;
     const stretch = on.squash ? 1 + 0.35 * clamp(v) + wobble : 1;
     return { x: start.x, y: start.y + p * fall, r: 33, stretch, neck: 0, visible: true };
   }
@@ -78,14 +77,10 @@ export function splashAt(t) {
   const R = rng(14);
   const drops = Array.from({ length: 9 }, (_, i) => {
     const a = -Math.PI / 2 + (i - 4) * 0.33 + (R() - 0.5) * 0.2, sp = 330 + R() * 260;
-    const x = TIP[0] + Math.cos(a) * sp * k, y = POOL_Y - 4 + Math.sin(a) * sp * k + 0.5 * 1900 * k * k;
+    const [x, y] = ballistic([TIP[0], POOL_Y - 4], [Math.cos(a) * sp, Math.sin(a) * sp], 1900, k);
     return { x, y, r: 5 + R() * 6, alive: y < POOL_Y + 2 };
   });
-  const rings = [0, 0.22, 0.5].map((d) => {
-    const q = (k - d) / 1.2;
-    return q > 0 && q < 1 ? { r: 30 + 230 * ease.out(q), alpha: 1 - q } : null;
-  }).filter(Boolean);
-  return { drops, rings };
+  return { drops, rings: rings(k).map(({ r, strength }) => ({ r, alpha: strength })) };
 }
 
 // The version I made first: a fixed circle sliding tip to pool on one ease-in-out curve.

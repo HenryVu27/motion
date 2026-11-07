@@ -1,9 +1,10 @@
 // One ship, drawn twice. The left canvas is how the first film moved: continuous 30 fps, frozen
 // lines, a sine bob, symmetric oars. The right canvas adds, one switch each, what hand-drawn
 // animation does. Every principle can be turned off on its own to feel what it contributes.
-import { paper, setBoil, noise2, clamp, ease, inkLine, inkLayer, halftone, INK } from '../../film/kit.js';
+import { paper, setBoil, noise2, clamp, lerp, ease, inkLine, inkLayer, halftone, INK } from '../../film/kit.js';
 import { drawGalley, sun } from '../../films/ship-of-theseus/film.js';
 import { loop } from '../../shared/page.js';
+import { waves, ride, lag, beat, chainWave } from '../../film/motion.js';
 
 const SIZE = 720, DRAWINGS_PER_SECOND = 12;
 const SHIP = { cx: 500, wl: 640, W: 620, D: 150 };
@@ -18,8 +19,8 @@ const PRINCIPLES = {
 
 // ---------- Waves: one function drives the sea lines and the ship, so they agree ----------
 
-const wave = (x, t) => 7 * Math.sin(x * 0.011 - t * 1.25) + 3.5 * Math.sin(x * 0.026 + t * 0.85 + 1.7);
-const pitchAt = (t) => Math.atan2(wave(SHIP.cx + 200, t) - wave(SHIP.cx - 200, t), 400);
+const wave = waves();
+const pitchAt = (t) => ride(wave, SHIP.cx, 200, t).pitch;
 
 function sea(ctx, t, live) {
   const y0 = 600;
@@ -34,12 +35,11 @@ function sea(ctx, t, live) {
 // ---------- Oars: a real stroke is a fast pull and a slow, lifted recovery ----------
 
 function oarStroke(i, t) {
-  const n = noise2(91);
-  const phase = ((t * 0.55 - i * 0.018 + n(i * 0.7, 0) * 0.04) % 1 + 1) % 1;
-  const PULL = 0.36, CATCH = 2.6, FINISH = 1.92;
-  if (phase < PULL) return { a: CATCH + (FINISH - CATCH) * ease.inOut(phase / PULL), reach: 1.1, phase };
-  const r = (phase - PULL) / (1 - PULL);
-  return { a: FINISH + (CATCH - FINISH) * ease.inOut(r), reach: 1 - 0.14 * Math.sin(Math.PI * r), phase };
+  const n = noise2(91), CATCH = 2.6, FINISH = 1.92;
+  const s = beat(t, { period: 1 / 0.55, drive: 0.36, offset: -i * 0.018 + n(i * 0.7, 0) * 0.04 });
+  return s.driving
+    ? { a: lerp(CATCH, FINISH, s.p), reach: 1.1, phase: s.phase }
+    : { a: lerp(FINISH, CATCH, s.p), reach: 1 - 0.14 * Math.sin(Math.PI * s.p), phase: s.phase };
 }
 
 // A small splash where each blade bites the water: secondary action.
@@ -66,8 +66,8 @@ function pennant(ctx, H, t, live) {
   const [sx, sy] = H(1, 0), base = [sx + SHIP.D * 0.06, sy - SHIP.D * 0.6];
   const pts = [];
   for (let j = 0; j <= 10; j++) {
-    const s = j / 10, lag = live ? Math.sin(t * 5.2 - j * 0.7) * 14 * s : 0;
-    pts.push([base[0] + s * 70, base[1] - 6 * s + lag]);
+    const u = j / 10, flap = live ? chainWave(t, u, { amp: 14, freq: 5.2, wavelength: (2 * Math.PI) / 7 }) : 0;
+    pts.push([base[0] + u * 70, base[1] - 6 * u + flap]);
   }
   inkLine(ctx, pts, { width: 4.5, color: INK.red, seed: 140, wobble: 0.8, taper: true });
 }
@@ -102,16 +102,16 @@ function draw(canvas, T, on) {
   // The ship: a sine bob, or carried by the very waves drawn under it (heave and pitch).
   ctx.save();
   if (on.ride) {
-    const heave = (wave(SHIP.cx - 150, t) + wave(SHIP.cx, t) + wave(SHIP.cx + 150, t)) / 3;
+    const { heave, pitch } = ride(wave, SHIP.cx, 200, t);
     ctx.translate(SHIP.cx, SHIP.wl + heave);
-    ctx.rotate(pitchAt(t));
+    ctx.rotate(pitch);
     ctx.translate(-SHIP.cx, -SHIP.wl);
   } else {
     ctx.translate(0, Math.sin(t * 1.4) * 3);
   }
   // Follow-through: the sail trails the hull's pitch by a third of a second and breathes.
   const sail = on.follow
-    ? { lag: (pitchAt(t - 0.35) - pitchAt(t)) * 2.4 + Math.sin(t * 1.9) * 0.02, belly: 10 + Math.sin(t * 1.6 + 0.5) * 6 }
+    ? { lag: (lag(pitchAt, t, 0.35) - pitchAt(t)) * 2.4 + Math.sin(t * 1.9) * 0.02, belly: 10 + Math.sin(t * 1.6 + 0.5) * 6 }
     : { lag: 0, belly: 0 };
   const H = drawGalley(ctx, SHIP, {
     seed: 80, oars: t * 0.7, sail,

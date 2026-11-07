@@ -10,6 +10,7 @@ import {
   draw as drawFlat, dropAt, leafAt, splashAt, dropPath, leafShape,
 } from '../14-timing-spacing/scene.js';
 import { loop } from '../../shared/page.js';
+import { rippleLayer } from '../../film/motion.js';
 
 const LIGHT = [-0.6, -0.8];   // points toward the light: upper left
 const FORM = {
@@ -146,47 +147,22 @@ function poolForm(ctx, splash, form, drop, t) {
 }
 const R2 = (G) => G() * Math.PI * 2;
 
-// The water itself disperses: each passing wave pushes the pond's own texture outward, so pigment,
-// pebbles and the far wall all ripple, instead of rings being drawn on top of a frozen surface.
-// The painted pond is redrawn in thin elliptical bands, each magnified about the impact point by
-// the wave's displacement there. Packets follow the same timing as the rings in splashAt.
+// The water itself disperses: each passing wave pushes the pond's own texture outward (rippleLayer
+// in film/motion.js), and a pale crater opens and closes where the drop went in.
 function rippled(ctx, cache, pool, t) {
-  const W = ctx.canvas.width, s = W / 1000, ix = TIP[0] * s, iy = POOL_Y * s, SQ = 0.22, k = t - IMPACT;
+  const k = t - IMPACT;
+  rippleLayer(ctx, cache, { center: [TIP[0], POOL_Y], clip: pool, k });
+  const c = clamp(1 - k / 0.45);
+  if (k <= 0 || c <= 0) return;
+  const s = ctx.canvas.width / 1000, ix = TIP[0] * s, iy = POOL_Y * s;
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.drawImage(cache, 0, 0);
-  if (k > 0 && k < 1.8) {
-    ctx.beginPath();
-    pool.forEach(([x, y], i) => (i ? ctx.lineTo(x * s, y * s) : ctx.moveTo(x * s, y * s)));
-    ctx.clip();
-    for (const d of [0, 0.22, 0.5]) {
-      const q = (k - d) / 1.2;
-      if (q <= 0 || q >= 1) continue;
-      const R = 30 + 230 * ease.out(q), amp = 9 * (1 - q) ** 1.5;
-      for (let r = Math.max(6, R - 40); r < R + 14; r += 5) {
-        const disp = amp * Math.sin(((r - R) / 13) * Math.PI) * clamp((r - R + 40) / 20) * clamp((R + 14 - r) / 8);
-        const f = 1 + disp / r;
-        ctx.save();
-        ctx.beginPath();
-        ctx.ellipse(ix, iy, (r + 5) * s, (r + 5) * SQ * s, 0, 0, Math.PI * 2);
-        ctx.ellipse(ix, iy, r * s, r * SQ * s, 0, 0, Math.PI * 2);
-        ctx.clip('evenodd');
-        ctx.translate(ix, iy); ctx.scale(f, f); ctx.translate(-ix, -iy);
-        ctx.drawImage(cache, 0, 0);
-        ctx.restore();
-      }
-    }
-    // Where the drop went in, the water is pushed aside for a moment: a pale crater that closes.
-    const c = clamp(1 - k / 0.45);
-    if (c > 0) {
-      const g = ctx.createRadialGradient(ix, iy, 0, ix, iy, 46 * s);
-      g.addColorStop(0, `rgba(242,234,217,${0.8 * c})`);
-      g.addColorStop(1, 'rgba(242,234,217,0)');
-      ctx.translate(ix, iy); ctx.scale(1, SQ * 1.6); ctx.translate(-ix, -iy);
-      ctx.fillStyle = g;
-      ctx.fillRect(ix - 60 * s, iy - 60 * s, 120 * s, 120 * s);
-    }
-  }
+  const g = ctx.createRadialGradient(ix, iy, 0, ix, iy, 46 * s);
+  g.addColorStop(0, `rgba(242,234,217,${0.8 * c})`);
+  g.addColorStop(1, 'rgba(242,234,217,0)');
+  ctx.translate(ix, iy); ctx.scale(1, 0.35); ctx.translate(-ix, -iy);
+  ctx.fillStyle = g;
+  ctx.fillRect(ix - 60 * s, iy - 60 * s, 120 * s, 120 * s);
   ctx.restore();
 }
 
