@@ -58,6 +58,19 @@ export function anticipate(p, back = 0.15, split = 0.3) {
 // Squash and stretch with the area kept: stretch s makes it r*s tall and r/sqrt(s) wide.
 export const squash = (r, s) => ({ w: r / Math.sqrt(s), h: r * s });
 
+// ---------- Limbs ----------
+
+// Two-bone inverse kinematics: a limb from `root` with bones L1 and L2 reaching for `target`.
+// Returns the joint (elbow or knee) and the end point; bend = 1 or -1 picks which way it folds.
+export function ik2(root, target, L1, L2, bend = 1) {
+  const dx = target[0] - root[0], dy = target[1] - root[1];
+  const d = Math.min(Math.hypot(dx, dy), L1 + L2 - 1e-3), base = Math.atan2(dy, dx);
+  const a = Math.acos(clamp((L1 * L1 + d * d - L2 * L2) / (2 * L1 * d), -1, 1)) * bend;
+  const joint = [root[0] + Math.cos(base + a) * L1, root[1] + Math.sin(base + a) * L1];
+  const b = Math.atan2(target[1] - joint[1], target[0] - joint[0]);
+  return { joint, end: [joint[0] + Math.cos(b) * L2, joint[1] + Math.sin(b) * L2] };
+}
+
 // ---------- Flexible bodies ----------
 
 // Bend a body that is held at `root` and free at `tip` (leaf, branch, tail, arm, flag pole).

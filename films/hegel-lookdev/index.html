@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Style Tests</title>
+  <link rel="stylesheet" href="/shared/studio.css">
+  <style>
+    .tests { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .tests figure { margin: 0; }
+    .tests canvas { display: block; width: 100%; aspect-ratio: 1; }
+    @media (max-width: 760px) { .tests { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="runhead"><a href="../../">Motion Studio</a> / Look development</div>
+    <h1>Three looks for the Hegel film</h1>
+    <p class="dek">One moment, the same timing in each: one figure gives way and the other rises a beat later. Pick the one that feels right, or none.</p>
+    <div class="wide tests">
+      <figure><div class="fig-title">A. Characters in a world</div><canvas id="world"></canvas><figcaption>Two people on a road at dusk. Closest to a narrated video essay.</figcaption></figure>
+      <figure><div class="fig-title">B. Creatures, no people</div><canvas id="cranes"></canvas><figcaption>Two cranes on cyanotype blue. The idea carried by animals, never uncanny.</figcaption></figure>
+      <figure><div class="fig-title">C. The first idea, bold</div><canvas id="bold"></canvas><figcaption>The facing profiles, as a graphic poster with a moving camera.</figcaption></figure>
+    </div>
+  </main>
+  <script type="module">
+    import { drawWorld, drawCranes, drawBold } from './lookdev.js';
+    import { loop } from '../../shared/page.js';
+    const canvases = [['world', drawWorld], ['cranes', drawCranes], ['bold', drawBold]].map(([id, fn]) => {
+      const c = document.getElementById(id); c.width = c.height = 720;
+      return [c, fn];
+    });
+    const render = (T) => canvases.forEach(([c, fn]) => { const ctx = c.getContext('2d'); ctx.setTransform(c.width / 1000, 0, 0, c.width / 1000, 0, 0); fn(ctx, T); });
+    let last = -1;
+    loop((dt, now) => { const d = Math.floor(now * 12); if (d !== last) { last = d; render(now); } }, document.getElementById('cranes'));
+    window.renderTests = render;
+  </script>
+</body>
+</html>
